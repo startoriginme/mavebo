@@ -51,6 +51,21 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   const isFollowingEmpty = followingPhotos.length === 0
   const hasPhotos = photos.length > 0
 
+  // Скрываем/показываем навигацию при входе/выходе из Tinder Mode
+  useEffect(() => {
+    if (tinderMode) {
+      // Скрываем навигацию
+      document.body.classList.add('hide-nav')
+    } else {
+      // Показываем навигацию обратно
+      document.body.classList.remove('hide-nav')
+    }
+    
+    return () => {
+      document.body.classList.remove('hide-nav')
+    }
+  }, [tinderMode])
+
   // Загружаем счетчик свайпов пользователя
   useEffect(() => {
     if (userId) {
