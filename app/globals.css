@@ -115,7 +115,7 @@
     transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
   }
 
-  button:active, a:active, .interactive:active {
+  button:active {
     transform: scale(0.97);
   }
 }
@@ -262,7 +262,7 @@
 
 /* Smooth scrolling */
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 /* Custom selection color */
