@@ -270,3 +270,20 @@ html {
   background: oklch(0.15 0.01 250 / 0.2);
   color: oklch(0.1 0.015 250);
 }
+
+
+/* Предотвращаем масштабирование на мобильных устройствах */
+input, 
+textarea, 
+select {
+  font-size: 16px !important;
+}
+
+/* Для очень маленьких экранов */
+@media (max-width: 768px) {
+  input, 
+  textarea, 
+  select {
+    font-size: 16px !important;
+  }
+}
