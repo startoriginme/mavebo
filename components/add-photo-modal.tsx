@@ -168,12 +168,10 @@ export default function AddPhotoModal({
       setError('Please enter a photo name.'); 
       return 
     }
-    if (!photo.collectionId) {
-      setError('Please select a collection.');
-      return
-    }
-    if (!photo.albumId) {
-      setError('Please select an album.');
+    
+    // Валидация: если выбрана коллекция, альбом обязателен
+    if (photo.collectionId && !photo.albumId) {
+      setError('Please select an album for this collection.');
       return
     }
 
@@ -197,8 +195,8 @@ export default function AddPhotoModal({
       const { data: urlData } = supabase.storage.from('photos').getPublicUrl(path)
       
       const insertData: any = {
-        album_id: photo.albumId,
-        collection_id: photo.collectionId,
+        album_id: photo.albumId || null,
+        collection_id: photo.collectionId || null,
         user_id: user.id,
         name: photo.name.trim(),
         url: urlData.publicUrl,
@@ -291,14 +289,13 @@ export default function AddPhotoModal({
             
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Collection *</label>
+                <label className="text-xs text-muted-foreground mb-1 block">Collection (optional)</label>
                 <select
                   value={photo.collectionId || ''}
                   onChange={(e) => updatePhoto({ collectionId: e.target.value || null, albumId: null })}
-                  required
                   className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
-                  <option value="">Select collection</option>
+                  <option value="">No collection (unsorted)</option>
                   {collections.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
@@ -306,19 +303,26 @@ export default function AddPhotoModal({
               </div>
               
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Album *</label>
+                <label className="text-xs text-muted-foreground mb-1 block">
+                  Album {photo.collectionId && <span className="text-destructive">*</span>}
+                </label>
                 <select
                   value={photo.albumId || ''}
                   onChange={(e) => updatePhoto({ albumId: e.target.value || null })}
                   disabled={!photo.collectionId}
-                  required
+                  required={!!photo.collectionId}
                   className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                 >
-                  <option value="">Select album</option>
+                  <option value="">{photo.collectionId ? 'Select album' : 'No album (unsorted)'}</option>
                   {(albumsMap[photo.collectionId || ''] ?? []).map((a) => (
                     <option key={a.id} value={a.id}>{a.name}</option>
                   ))}
                 </select>
+                {photo.collectionId && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Album is required when a collection is selected
+                  </p>
+                )}
               </div>
             </div>
             
