@@ -97,34 +97,58 @@ export default function CollectionClient({ collection, initialAlbums, unsortedPh
 
   async function createAlbum() {
     if (!newAlbumName.trim() || !collection) return
-    const { data, error } = await supabase
-      .from('albums')
-      .insert({
-        collection_id: collection.id,
-        name: newAlbumName,
-        privacy: collection.privacy,
-        sort_order: albums.length
-      })
-      .select()
-      .single()
     
-    if (!error && data) {
-      setAlbums([...albums, { ...data, photos: [] }])
-      setActiveAlbum(data.id)
+    try {
+      const { data, error } = await supabase
+        .from('albums')
+        .insert({
+          collection_id: collection.id,
+          name: newAlbumName,
+          privacy: collection.privacy,
+          sort_order: albums.length
+        })
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('Error creating album:', error)
+        alert('Failed to create album: ' + error.message)
+        return
+      }
+      
+      if (data) {
+        // Добавляем новый альбом с пустым массивом фото
+        const newAlbum = { ...data, photos: [] }
+        setAlbums(prev => [...prev, newAlbum])
+        setActiveAlbum(data.id)
+        setCreatingAlbum(false)
+        setNewAlbumName('')
+      }
+    } catch (err) {
+      console.error('Error in createAlbum:', err)
+      alert('Failed to create album')
     }
-    setCreatingAlbum(false)
-    setNewAlbumName('')
   }
 
   async function renameAlbum(albumId: string) {
     if (!editName.trim()) return
-    await supabase.from('albums').update({ name: editName }).eq('id', albumId)
+    const { error } = await supabase.from('albums').update({ name: editName }).eq('id', albumId)
+    if (error) {
+      console.error('Error renaming album:', error)
+      alert('Failed to rename album')
+      return
+    }
     setAlbums((prev) => prev.map((a) => (a.id === albumId ? { ...a, name: editName } : a)))
     setEditingAlbum(null)
   }
 
   async function deleteAlbum(albumId: string) {
-    await supabase.from('albums').delete().eq('id', albumId)
+    const { error } = await supabase.from('albums').delete().eq('id', albumId)
+    if (error) {
+      console.error('Error deleting album:', error)
+      alert('Failed to delete album')
+      return
+    }
     const next = albums.filter((a) => a.id !== albumId)
     setAlbums(next)
     if (activeAlbum === albumId) setActiveAlbum(next[0]?.id ?? '')
@@ -132,12 +156,20 @@ export default function CollectionClient({ collection, initialAlbums, unsortedPh
   }
 
   async function changePrivacy(albumId: string, privacy: Privacy) {
-    await supabase.from('albums').update({ privacy }).eq('id', albumId)
+    const { error } = await supabase.from('albums').update({ privacy }).eq('id', albumId)
+    if (error) {
+      console.error('Error changing privacy:', error)
+      return
+    }
     setAlbums((prev) => prev.map((a) => (a.id === albumId ? { ...a, privacy } : a)))
   }
 
   async function deletePhoto(photoId: string) {
-    await supabase.from('photos').delete().eq('id', photoId)
+    const { error } = await supabase.from('photos').delete().eq('id', photoId)
+    if (error) {
+      console.error('Error deleting photo:', error)
+      return
+    }
     setAlbums((prev) =>
       prev.map((a) => ({
         ...a,
@@ -162,10 +194,15 @@ export default function CollectionClient({ collection, initialAlbums, unsortedPh
 
   // Функция для изменения приватности фото в коллекции
   async function updatePhotoPrivacy(photoId: string, newPrivacy: Privacy) {
-    await supabase
+    const { error } = await supabase
       .from('photos')
       .update({ privacy: newPrivacy })
       .eq('id', photoId)
+    
+    if (error) {
+      console.error('Error updating photo privacy:', error)
+      return
+    }
     
     // Обновляем локальное состояние
     setAlbums(prev =>
@@ -546,7 +583,7 @@ export default function CollectionClient({ collection, initialAlbums, unsortedPh
         </div>
       )}
 
-      {/* Photos grid - теперь с возможностью менять приватность */}
+      {/* Photos grid */}
       {activeAlbumData && activeAlbumData.photos && (
         <PhotoGrid
           photos={activeAlbumData.photos as Photo[]}
