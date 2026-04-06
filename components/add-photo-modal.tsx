@@ -64,16 +64,16 @@ export default function AddPhotoModal({
     load()
   }, [])
 
+  // ИСПРАВЛЕНО: убираем фильтрацию по user_id
   async function loadAlbums(collectionId: string) {
     if (albumsMap[collectionId]) return
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    
     const { data } = await supabase
       .from('albums')
       .select('*')
       .eq('collection_id', collectionId)
-      .eq('user_id', user.id)
       .order('sort_order')
+    
     setAlbumsMap((prev) => ({ ...prev, [collectionId]: data ?? [] }))
   }
 
