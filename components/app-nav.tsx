@@ -52,7 +52,7 @@ export default function AppNav() {
               className={cn(
                 'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all',
                 pathname.startsWith('/feed')
-                  ? 'bg-black text-white'
+                  ? 'text-black'
                   : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
               )}
               aria-current={pathname.startsWith('/feed') ? 'page' : undefined}
@@ -66,7 +66,7 @@ export default function AppNav() {
               className={cn(
                 'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all',
                 pathname.startsWith('/search')
-                  ? 'bg-black text-white'
+                  ? 'text-black'
                   : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
               )}
               aria-current={pathname.startsWith('/search') ? 'page' : undefined}
@@ -93,7 +93,7 @@ export default function AppNav() {
               className={cn(
                 'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all',
                 pathname.startsWith('/gallery')
-                  ? 'bg-black text-white'
+                  ? 'text-black'
                   : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
               )}
               aria-current={pathname.startsWith('/gallery') ? 'page' : undefined}
@@ -107,7 +107,7 @@ export default function AppNav() {
               className={cn(
                 'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all',
                 pathname.startsWith('/profile')
-                  ? 'bg-black text-white'
+                  ? 'text-black'
                   : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
               )}
               aria-current={pathname.startsWith('/profile') ? 'page' : undefined}
@@ -124,7 +124,7 @@ export default function AppNav() {
               className={cn(
                 'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all',
                 isDocsActive
-                  ? 'bg-black text-white'
+                  ? 'text-black'
                   : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
               )}
               aria-current={isDocsActive ? 'page' : undefined}
@@ -141,7 +141,7 @@ export default function AppNav() {
               className={cn(
                 'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all',
                 isAboutActive
-                  ? 'bg-black text-white'
+                  ? 'text-black'
                   : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
               )}
               aria-current={isAboutActive ? 'page' : undefined}
@@ -158,7 +158,7 @@ export default function AppNav() {
               className={cn(
                 'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all',
                 pathname.startsWith('/settings')
-                  ? 'bg-black text-white'
+                  ? 'text-black'
                   : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
               )}
               aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
