@@ -248,4 +248,4 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
       {viewerPhoto && <PhotoViewer photo={viewerPhoto} onClose={() => setViewerPhoto(null)} />}
     </main>
   )
-}  исправь мне тут короче. только тинлер мод не убирай
+}  
