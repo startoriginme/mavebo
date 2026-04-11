@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import type { Photo } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { Heart, Flame, X, Heart as HeartIcon, ExternalLink } from 'lucide-react'
+import { Heart, Flame, X, Heart as HeartIcon, ExternalLink, Globe, Users } from 'lucide-react'
 import PhotoViewer from '@/components/photo-viewer'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -201,8 +201,11 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
               onClick={() => setShowAll(!showAll)}
               className={`px-3 py-1.5 rounded-full text-sm font-medium ${showAll ? 'bg-primary text-white' : 'bg-muted'}`}
             >
-              {showAll ? <Globe className="w-3.5 h-3.5 inline mr-1" /> : <Users className="w-3.5 h-3.5 inline mr-1" />}
-              {showAll ? 'All' : 'Following'}
+              {showAll ? (
+                <><Globe className="w-3.5 h-3.5 inline mr-1" /> All</>
+              ) : (
+                <><Users className="w-3.5 h-3.5 inline mr-1" /> Following</>
+              )}
             </button>
           )}
         </div>
@@ -216,6 +219,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
               <img
                 src={photo.profile?.avatar_url || `https://ui-avatars.com/api/?name=${photo.profile?.name}`}
                 className="w-8 h-8 rounded-full object-cover"
+                alt=""
               />
               <div>
                 <p className="font-semibold text-sm">{photo.profile?.name}</p>
@@ -248,4 +252,4 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
       {viewerPhoto && <PhotoViewer photo={viewerPhoto} onClose={() => setViewerPhoto(null)} />}
     </main>
   )
-}  
+}
