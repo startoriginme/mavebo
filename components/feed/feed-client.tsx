@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { Photo } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { Heart, Flame, X, Heart as HeartIcon, ExternalLink } from 'lucide-react'
+import { Heart, Flame, X, Heart as HeartIcon, ExternalLink, Globe, Users } from 'lucide-react'
 import PhotoViewer from '@/components/photo-viewer'
 import Link from 'next/link'
-import Image from 'next/image'
 
 interface Props {
   initialFollowingPhotos: Photo[]
@@ -34,6 +33,13 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   const [swipeCount, setSwipeCount] = useState(0)
   const [showAchievement, setShowAchievement] = useState<string | null>(null)
   
+  // Получаем текущие фото для показа
+  const tinderPhotos = useMemo(() => {
+    const allPublicPhotos = [...allPhotos, ...followingPhotos].filter(p => p.privacy === 'public')
+    return allPublicPhotos
+  }, [allPhotos, followingPhotos])
+  
+  const currentTinderPhoto = tinderPhotos[tinderIndex]
   const photos = useMemo(() => showAll ? allPhotos : followingPhotos, [showAll, allPhotos, followingPhotos])
   const isFollowingEmpty = followingPhotos.length === 0
 
@@ -48,7 +54,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
       if (data) setSwipeCount(data.swipe_count || 0)
     }
     loadSwipeCount()
-  }, [userId])
+  }, [userId, supabase])
 
   // Скрытие навигации в Tinder Mode
   useEffect(() => {
@@ -77,11 +83,13 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   }
 
   const handleSwipe = async () => {
+    if (!currentTinderPhoto) return
+    
     const newCount = swipeCount + 1
     setSwipeCount(newCount)
     await updateSwipeCount(newCount)
     
-    if (tinderIndex >= (showAll ? allPhotos : followingPhotos).length - 1) {
+    if (tinderIndex >= tinderPhotos.length - 1) {
       setTinderIndex(0)
     } else {
       setTinderIndex(prev => prev + 1)
@@ -107,53 +115,77 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
     window.open(url, '_blank')
   }
 
-  // Tinder Mode
-  if (tinderMode) {
-    const currentPhoto = (showAll ? allPhotos : followingPhotos)[tinderIndex]
-    if (!currentPhoto) return null
+  const enterTinderMode = () => {
+    if (tinderPhotos.length === 0) {
+      alert("No public photos available. Upload some photos first!")
+      return
+    }
+    setTinderIndex(0)
+    setTinderMode(true)
+  }
 
+  // Tinder Mode UI
+  if (tinderMode && currentTinderPhoto) {
     return (
-      <main className="fixed inset-0 bg-black z-50 flex items-center justify-center">
+      <main className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center">
+        {/* Кнопка выхода */}
         <button
           onClick={() => setTinderMode(false)}
-          className="fixed top-4 right-4 z-50 p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
+          className="fixed top-4 right-4 z-50 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all"
         >
           <X className="w-6 h-6" />
         </button>
+
+        {/* Счетчик свайпов */}
+        <div className="fixed top-4 left-4 z-50 glass rounded-full px-4 py-2 text-white">
+          <Flame className="w-4 h-4 inline mr-1 text-orange-500" />
+          <span className="font-bold">{swipeCount}</span>
+        </div>
+
+        {/* Ачивка */}
+        {showAchievement && (
+          <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm rounded-xl p-3 animate-bounce z-50 shadow-lg">
+            <p className="font-semibold text-black">Achievement Unlocked! 🎉</p>
+            <p className="text-sm text-gray-600">{showAchievement}</p>
+          </div>
+        )}
         
-        <div className="relative w-full max-w-lg aspect-[3/4]">
+        {/* Карточка для свайпа */}
+        <div className="relative w-full max-w-md aspect-[3/4] mx-4">
           <img
-            src={currentPhoto.url}
-            alt={currentPhoto.name}
-            className="w-full h-full object-contain"
+            src={currentTinderPhoto.url}
+            alt={currentTinderPhoto.name}
+            className="w-full h-full object-cover rounded-2xl shadow-2xl"
           />
           
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-            <p className="text-white font-semibold text-lg">{currentPhoto.name}</p>
-            <div className="flex items-center gap-2 mt-2">
-              {currentPhoto.profile?.avatar_url && (
-                <img src={currentPhoto.profile.avatar_url} className="w-6 h-6 rounded-full" />
+          {/* Информация о фото */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent rounded-b-2xl p-4">
+            <p className="text-white font-semibold text-lg">{currentTinderPhoto.name}</p>
+            <div className="flex items-center gap-2 mt-1">
+              {currentTinderPhoto.profile?.avatar_url && (
+                <img src={currentTinderPhoto.profile.avatar_url} className="w-6 h-6 rounded-full" />
               )}
-              <p className="text-white/80 text-sm">@{currentPhoto.profile?.username}</p>
+              <p className="text-white/80 text-sm">@{currentTinderPhoto.profile?.username}</p>
             </div>
           </div>
         </div>
         
-        <div className="fixed bottom-8 left-0 right-0 flex justify-center gap-8">
+        {/* Кнопка лайка */}
+        <div className="fixed bottom-8 left-0 right-0 flex justify-center">
           <button
             onClick={handleSwipe}
-            className="w-16 h-16 rounded-full bg-green-500/20 border border-green-500 flex items-center justify-center hover:scale-110 transition"
+            className="w-20 h-20 rounded-full bg-green-500/20 border-2 border-green-500 flex items-center justify-center hover:scale-110 transition-all active:scale-95"
           >
-            <HeartIcon className="w-8 h-8 text-green-500" />
+            <HeartIcon className="w-10 h-10 text-green-500" />
           </button>
         </div>
-        
-        {showAchievement && (
-          <div className="fixed top-20 left-1/2 transform -translate-x-1/2 glass rounded-xl p-3 animate-bounce z-50">
-            <p className="font-semibold">Achievement Unlocked! 🎉</p>
-            <p className="text-sm">{showAchievement}</p>
-          </div>
-        )}
+
+        {/* Индикатор прогресса */}
+        <div className="fixed bottom-28 left-0 right-0 text-center">
+          <p className="text-white/50 text-sm">
+            {tinderIndex + 1} / {tinderPhotos.length}
+          </p>
+        </div>
       </main>
     )
   }
@@ -165,7 +197,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-semibold">Feed</h1>
           <button
-            onClick={() => setTinderMode(true)}
+            onClick={enterTinderMode}
             className="px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-orange-500 to-pink-500 text-white"
           >
             <Flame className="w-3.5 h-3.5 inline mr-1" />
@@ -190,7 +222,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
         <h1 className="text-2xl font-semibold">Feed</h1>
         <div className="flex gap-2">
           <button
-            onClick={() => setTinderMode(true)}
+            onClick={enterTinderMode}
             className="px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-orange-500 to-pink-500 text-white"
           >
             <Flame className="w-3.5 h-3.5 inline mr-1" />
@@ -201,8 +233,11 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
               onClick={() => setShowAll(!showAll)}
               className={`px-3 py-1.5 rounded-full text-sm font-medium ${showAll ? 'bg-primary text-white' : 'bg-muted'}`}
             >
-              {showAll ? <Globe className="w-3.5 h-3.5 inline mr-1" /> : <Users className="w-3.5 h-3.5 inline mr-1" />}
-              {showAll ? 'All' : 'Following'}
+              {showAll ? (
+                <><Globe className="w-3.5 h-3.5 inline mr-1" /> All</>
+              ) : (
+                <><Users className="w-3.5 h-3.5 inline mr-1" /> Following</>
+              )}
             </button>
           )}
         </div>
@@ -216,6 +251,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
               <img
                 src={photo.profile?.avatar_url || `https://ui-avatars.com/api/?name=${photo.profile?.name}`}
                 className="w-8 h-8 rounded-full object-cover"
+                alt=""
               />
               <div>
                 <p className="font-semibold text-sm">{photo.profile?.name}</p>
@@ -231,11 +267,11 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
             {/* Actions */}
             <div className="p-3">
               <div className="flex items-center gap-4 mb-1">
-                <button onClick={() => toggleLike(photo)} className="flex items-center gap-1">
+                <button onClick={() => toggleLike(photo)} className="flex items-center gap-1 transition hover:scale-105">
                   <Heart className={`w-5 h-5 ${photo.is_liked ? 'fill-red-500 text-red-500' : 'text-gray-500'}`} />
                   <span className="text-sm">{photo.likes_count || 0}</span>
                 </button>
-                <button onClick={() => openPhotoUrl(photo.url)} className="text-gray-500 hover:text-gray-700">
+                <button onClick={() => openPhotoUrl(photo.url)} className="text-gray-500 hover:text-gray-700 transition">
                   <ExternalLink className="w-5 h-5" />
                 </button>
               </div>
