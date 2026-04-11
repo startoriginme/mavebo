@@ -47,6 +47,7 @@ export default function AppNav() {
 
         <nav className="flex-1 flex flex-col gap-0.5 px-3 py-4" aria-label="Main navigation">
           <div className="flex-1">
+            {/* Feed */}
             <Link
               href="/feed"
               className={cn(
@@ -61,6 +62,7 @@ export default function AppNav() {
               Feed
             </Link>
 
+            {/* Search */}
             <Link
               href="/search"
               className={cn(
@@ -88,6 +90,7 @@ export default function AppNav() {
               </button>
             </div>
 
+            {/* Gallery */}
             <Link
               href="/gallery"
               className={cn(
@@ -102,6 +105,7 @@ export default function AppNav() {
               Gallery
             </Link>
 
+            {/* Profile */}
             <Link
               href="/profile"
               className={cn(
@@ -170,7 +174,7 @@ export default function AppNav() {
         </nav>
       </aside>
 
-      {/* Mobile Bottom Nav — без пузырька */}
+      {/* Mobile Bottom Nav — без пузырька, просто черный текст для активного */}
       <nav
         className="md:hidden fixed bottom-4 left-4 right-4 z-40 bg-white rounded-2xl border border-gray-200 shadow-lg"
         aria-label="Main navigation"
