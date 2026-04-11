@@ -14,7 +14,7 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.1 0.015 250);
 
-  --primary: oklch(0.15 0.01 250); /* Black accent */
+  --primary: oklch(0.15 0.01 250);
   --primary-foreground: oklch(0.99 0 0);
 
   --secondary: oklch(0.95 0.008 250);
@@ -29,29 +29,15 @@
   --destructive: oklch(0.637 0.237 25.331);
   --destructive-foreground: oklch(0.99 0 0);
 
-  --border: oklch(0.86 0.008 250 / 0.4);
+  --border: oklch(0.86 0.008 250 / 0.3);
   --input: oklch(0.97 0.005 250);
-  --ring: oklch(0.15 0.01 250 / 0.35);
+  --ring: oklch(0.15 0.01 250 / 0.2);
 
-  --nav-height: 4rem;
-  --sidebar-width: 15rem;
-
-  --radius: 1rem;
-
-  --sidebar: oklch(0.99 0.003 250);
-  --sidebar-foreground: oklch(0.1 0.015 250);
-  --sidebar-primary: oklch(0.15 0.01 250);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.95 0.008 250);
-  --sidebar-accent-foreground: oklch(0.2 0.015 250);
-  --sidebar-border: oklch(0.88 0.008 250 / 0.4);
-  --sidebar-ring: oklch(0.15 0.01 250 / 0.35);
+  --radius: 0.75rem;
 }
 
 @theme inline {
-  --font-sans: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
-
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -71,93 +57,60 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
 
-  --radius-sm: calc(var(--radius) - 4px);
+  --radius-sm: calc(var(--radius) - 0.25rem);
   --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 4px);
-  --radius-xl: calc(var(--radius) + 8px);
+  --radius-lg: calc(var(--radius) + 0.25rem);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--border);
   }
+  
   body {
-    @apply bg-background text-foreground;
-    background-attachment: fixed;
+    background: var(--background);
+    color: var(--foreground);
     -webkit-font-smoothing: antialiased;
-    position: relative;
-  }
-
-  /* Микро-интеракции */
-  button, a, .interactive {
-    transition: all 0.15s ease;
-  }
-
-  button:active {
-    transform: scale(0.97);
   }
 }
 
 @layer utilities {
-  /* Простой glass эффект (без тяжелого blur) */
+  /* Простые карточки без blur */
   .glass {
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    border-radius: var(--radius-lg);
-  }
-
-  /* Навигационная панель */
-  .nav-glass {
-    background: rgba(255, 255, 255, 0.95);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  }
-
-  /* Карточки */
-  .card-glass {
     background: white;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: var(--radius-lg);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  
+  .nav-glass {
+    background: rgba(255, 255, 255, 0.98);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   }
 }
 
-/* Smooth scrolling */
-html {
-  scroll-behavior: auto;
+/* Микро-интеракции */
+button, a {
+  transition: opacity 0.15s ease;
 }
 
-/* Custom selection color */
-::selection {
-  background: rgba(0, 0, 0, 0.1);
-  color: oklch(0.1 0.015 250);
+button:active {
+  transform: scale(0.98);
 }
 
-/* Предотвращаем масштабирование на мобильных устройствах */
-input, 
-textarea, 
-select {
-  font-size: 16px !important;
+/* Запрещаем масштабирование на мобилках */
+input, textarea, select {
+  font-size: 16px;
 }
 
 @media (max-width: 768px) {
-  input, 
-  textarea, 
-  select {
-    font-size: 16px !important;
+  input, textarea, select {
+    font-size: 16px;
   }
 }
 
-/* Скрываем навигацию в Tinder Mode */
+/* Tinder Mode - скрываем навигацию */
 body.hide-nav aside,
 body.hide-nav nav {
-  display: none !important;
+  display: none;
 }
