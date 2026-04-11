@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import type { Photo } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { Heart, Flame, X, Heart as HeartIcon, ExternalLink, Globe, Users } from 'lucide-react'
+import { Heart, Flame, X, Heart as HeartIcon, ExternalLink } from 'lucide-react'
 import PhotoViewer from '@/components/photo-viewer'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface Props {
   initialFollowingPhotos: Photo[]
@@ -106,17 +107,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
     window.open(url, '_blank')
   }
 
-  const enterTinderMode = () => {
-    const allPublicPhotos = [...allPhotos, ...followingPhotos].filter(p => p.privacy === 'public')
-    if (allPublicPhotos.length === 0) {
-      alert("No public photos available. Upload some photos first!")
-      return
-    }
-    setTinderIndex(0)
-    setTinderMode(true)
-  }
-
-  // Tinder Mode UI (как во втором файле)
+  // Tinder Mode
   if (tinderMode) {
     const currentPhoto = (showAll ? allPhotos : followingPhotos)[tinderIndex]
     if (!currentPhoto) return null
@@ -174,7 +165,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-semibold">Feed</h1>
           <button
-            onClick={enterTinderMode}
+            onClick={() => setTinderMode(true)}
             className="px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-orange-500 to-pink-500 text-white"
           >
             <Flame className="w-3.5 h-3.5 inline mr-1" />
@@ -199,7 +190,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
         <h1 className="text-2xl font-semibold">Feed</h1>
         <div className="flex gap-2">
           <button
-            onClick={enterTinderMode}
+            onClick={() => setTinderMode(true)}
             className="px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-orange-500 to-pink-500 text-white"
           >
             <Flame className="w-3.5 h-3.5 inline mr-1" />
@@ -210,11 +201,8 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
               onClick={() => setShowAll(!showAll)}
               className={`px-3 py-1.5 rounded-full text-sm font-medium ${showAll ? 'bg-primary text-white' : 'bg-muted'}`}
             >
-              {showAll ? (
-                <><Globe className="w-3.5 h-3.5 inline mr-1" /> All</>
-              ) : (
-                <><Users className="w-3.5 h-3.5 inline mr-1" /> Following</>
-              )}
+              {showAll ? <Globe className="w-3.5 h-3.5 inline mr-1" /> : <Users className="w-3.5 h-3.5 inline mr-1" />}
+              {showAll ? 'All' : 'Following'}
             </button>
           )}
         </div>
@@ -228,7 +216,6 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
               <img
                 src={photo.profile?.avatar_url || `https://ui-avatars.com/api/?name=${photo.profile?.name}`}
                 className="w-8 h-8 rounded-full object-cover"
-                alt=""
               />
               <div>
                 <p className="font-semibold text-sm">{photo.profile?.name}</p>
@@ -244,11 +231,11 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
             {/* Actions */}
             <div className="p-3">
               <div className="flex items-center gap-4 mb-1">
-                <button onClick={() => toggleLike(photo)} className="flex items-center gap-1 transition hover:scale-105">
+                <button onClick={() => toggleLike(photo)} className="flex items-center gap-1">
                   <Heart className={`w-5 h-5 ${photo.is_liked ? 'fill-red-500 text-red-500' : 'text-gray-500'}`} />
                   <span className="text-sm">{photo.likes_count || 0}</span>
                 </button>
-                <button onClick={() => openPhotoUrl(photo.url)} className="text-gray-500 hover:text-gray-700 transition">
+                <button onClick={() => openPhotoUrl(photo.url)} className="text-gray-500 hover:text-gray-700">
                   <ExternalLink className="w-5 h-5" />
                 </button>
               </div>
@@ -261,4 +248,4 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
       {viewerPhoto && <PhotoViewer photo={viewerPhoto} onClose={() => setViewerPhoto(null)} />}
     </main>
   )
-}
+}  исправь мне тут короче. только тинлер мод не убирай
