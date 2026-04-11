@@ -33,13 +33,6 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   const [swipeCount, setSwipeCount] = useState(0)
   const [showAchievement, setShowAchievement] = useState<string | null>(null)
   
-  // Получаем текущие фото для показа
-  const tinderPhotos = useMemo(() => {
-    const allPublicPhotos = [...allPhotos, ...followingPhotos].filter(p => p.privacy === 'public')
-    return allPublicPhotos
-  }, [allPhotos, followingPhotos])
-  
-  const currentTinderPhoto = tinderPhotos[tinderIndex]
   const photos = useMemo(() => showAll ? allPhotos : followingPhotos, [showAll, allPhotos, followingPhotos])
   const isFollowingEmpty = followingPhotos.length === 0
 
@@ -54,7 +47,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
       if (data) setSwipeCount(data.swipe_count || 0)
     }
     loadSwipeCount()
-  }, [userId, supabase])
+  }, [userId])
 
   // Скрытие навигации в Tinder Mode
   useEffect(() => {
@@ -83,13 +76,11 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   }
 
   const handleSwipe = async () => {
-    if (!currentTinderPhoto) return
-    
     const newCount = swipeCount + 1
     setSwipeCount(newCount)
     await updateSwipeCount(newCount)
     
-    if (tinderIndex >= tinderPhotos.length - 1) {
+    if (tinderIndex >= (showAll ? allPhotos : followingPhotos).length - 1) {
       setTinderIndex(0)
     } else {
       setTinderIndex(prev => prev + 1)
@@ -116,7 +107,8 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   }
 
   const enterTinderMode = () => {
-    if (tinderPhotos.length === 0) {
+    const allPublicPhotos = [...allPhotos, ...followingPhotos].filter(p => p.privacy === 'public')
+    if (allPublicPhotos.length === 0) {
       alert("No public photos available. Upload some photos first!")
       return
     }
@@ -124,68 +116,53 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
     setTinderMode(true)
   }
 
-  // Tinder Mode UI
-  if (tinderMode && currentTinderPhoto) {
+  // Tinder Mode UI (как во втором файле)
+  if (tinderMode) {
+    const currentPhoto = (showAll ? allPhotos : followingPhotos)[tinderIndex]
+    if (!currentPhoto) return null
+
     return (
-      <main className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center">
-        {/* Кнопка выхода */}
+      <main className="fixed inset-0 bg-black z-50 flex items-center justify-center">
         <button
           onClick={() => setTinderMode(false)}
-          className="fixed top-4 right-4 z-50 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all"
+          className="fixed top-4 right-4 z-50 p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
         >
           <X className="w-6 h-6" />
         </button>
-
-        {/* Счетчик свайпов */}
-        <div className="fixed top-4 left-4 z-50 glass rounded-full px-4 py-2 text-white">
-          <Flame className="w-4 h-4 inline mr-1 text-orange-500" />
-          <span className="font-bold">{swipeCount}</span>
-        </div>
-
-        {/* Ачивка */}
-        {showAchievement && (
-          <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm rounded-xl p-3 animate-bounce z-50 shadow-lg">
-            <p className="font-semibold text-black">Achievement Unlocked! 🎉</p>
-            <p className="text-sm text-gray-600">{showAchievement}</p>
-          </div>
-        )}
         
-        {/* Карточка для свайпа */}
-        <div className="relative w-full max-w-md aspect-[3/4] mx-4">
+        <div className="relative w-full max-w-lg aspect-[3/4]">
           <img
-            src={currentTinderPhoto.url}
-            alt={currentTinderPhoto.name}
-            className="w-full h-full object-cover rounded-2xl shadow-2xl"
+            src={currentPhoto.url}
+            alt={currentPhoto.name}
+            className="w-full h-full object-contain"
           />
           
-          {/* Информация о фото */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent rounded-b-2xl p-4">
-            <p className="text-white font-semibold text-lg">{currentTinderPhoto.name}</p>
-            <div className="flex items-center gap-2 mt-1">
-              {currentTinderPhoto.profile?.avatar_url && (
-                <img src={currentTinderPhoto.profile.avatar_url} className="w-6 h-6 rounded-full" />
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+            <p className="text-white font-semibold text-lg">{currentPhoto.name}</p>
+            <div className="flex items-center gap-2 mt-2">
+              {currentPhoto.profile?.avatar_url && (
+                <img src={currentPhoto.profile.avatar_url} className="w-6 h-6 rounded-full" />
               )}
-              <p className="text-white/80 text-sm">@{currentTinderPhoto.profile?.username}</p>
+              <p className="text-white/80 text-sm">@{currentPhoto.profile?.username}</p>
             </div>
           </div>
         </div>
         
-        {/* Кнопка лайка */}
-        <div className="fixed bottom-8 left-0 right-0 flex justify-center">
+        <div className="fixed bottom-8 left-0 right-0 flex justify-center gap-8">
           <button
             onClick={handleSwipe}
-            className="w-20 h-20 rounded-full bg-green-500/20 border-2 border-green-500 flex items-center justify-center hover:scale-110 transition-all active:scale-95"
+            className="w-16 h-16 rounded-full bg-green-500/20 border border-green-500 flex items-center justify-center hover:scale-110 transition"
           >
-            <HeartIcon className="w-10 h-10 text-green-500" />
+            <HeartIcon className="w-8 h-8 text-green-500" />
           </button>
         </div>
-
-        {/* Индикатор прогресса */}
-        <div className="fixed bottom-28 left-0 right-0 text-center">
-          <p className="text-white/50 text-sm">
-            {tinderIndex + 1} / {tinderPhotos.length}
-          </p>
-        </div>
+        
+        {showAchievement && (
+          <div className="fixed top-20 left-1/2 transform -translate-x-1/2 glass rounded-xl p-3 animate-bounce z-50">
+            <p className="font-semibold">Achievement Unlocked! 🎉</p>
+            <p className="text-sm">{showAchievement}</p>
+          </div>
+        )}
       </main>
     )
   }
