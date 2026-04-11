@@ -22,10 +22,13 @@ export default function AppNav() {
   const isDocsActive = pathname.startsWith('/docs')
   const isAboutActive = pathname === '/about'
 
-  // Mobile nav items
-  const mobileNavItems = [
+  // Mobile nav items (Feed, Search, Gallery, Profile) — Add будет отдельно по центру
+  const leftNavItems = [
     { href: '/feed', label: 'Feed', icon: Home },
     { href: '/search', label: 'Search', icon: Search },
+  ]
+  
+  const rightNavItems = [
     { href: '/gallery', label: 'Gallery', icon: Images },
     { href: '/profile', label: 'Profile', icon: User },
   ]
@@ -174,14 +177,14 @@ export default function AppNav() {
         </nav>
       </aside>
 
-      {/* Mobile Bottom Nav — без пузырька, просто черный текст для активного */}
+      {/* Mobile Bottom Nav — Add по центру */}
       <nav
         className="md:hidden fixed bottom-4 left-4 right-4 z-40 bg-white rounded-2xl border border-gray-200 shadow-lg"
         aria-label="Main navigation"
       >
         <div className="flex items-center justify-around px-2 py-2">
-          {/* Feed */}
-          {mobileNavItems.map((item) => {
+          {/* Левые пункты (Feed, Search) */}
+          {leftNavItems.map((item) => {
             const isActive = pathname.startsWith(item.href)
             const Icon = item.icon
             
@@ -204,7 +207,7 @@ export default function AppNav() {
             )
           })}
           
-          {/* Add button */}
+          {/* Add button - по центру */}
           <div className="flex-1 flex justify-center">
             <button
               onClick={() => setAddOpen(true)}
@@ -216,6 +219,30 @@ export default function AppNav() {
               </div>
             </button>
           </div>
+          
+          {/* Правые пункты (Gallery, Profile) */}
+          {rightNavItems.map((item) => {
+            const isActive = pathname.startsWith(item.href)
+            const Icon = item.icon
+            
+            return (
+              <div key={item.href} className="flex-1 flex justify-center">
+                <Link
+                  href={item.href}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-0.5 py-2 transition-all rounded-full',
+                    isActive ? 'text-black' : 'text-gray-500',
+                    'hover:text-black'
+                  )}
+                  style={{ width: 48 }}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-[10px] font-medium truncate max-w-full">{item.label}</span>
+                </Link>
+              </div>
+            )
+          })}
         </div>
       </nav>
 
