@@ -279,19 +279,20 @@ export default function PhotoGrid({
             
             {showActions && isOwn && (
               <>
+                {/* Затемнение при наведении (только для десктопа) */}
                 <div className="absolute inset-0 bg-foreground/0 md:group-hover:bg-foreground/30 transition-all duration-200" />
                 
-                {/* Three dots button */}
-                <div className="absolute top-2 right-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                {/* Three dots button - ВСЕГДА ВИДНА */}
+                <div className="absolute top-2 right-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); openSettings(photo) }}
-                    className="w-7 h-7 rounded-md bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+                    className="w-7 h-7 rounded-md bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-all"
                   >
                     <MoreVertical className="w-4 h-4" />
                   </button>
                 </div>
                 
-                {/* Photo name on hover */}
+                {/* Photo name - всегда видно на мобилках, при ховере на десктопе */}
                 <div className="absolute bottom-0 left-0 right-0 p-2 md:translate-y-full md:group-hover:translate-y-0 transition-transform duration-200">
                   <span className="text-[10px] font-medium text-white truncate block drop-shadow bg-black/50 px-1.5 py-0.5 rounded">
                     {photo.name}
