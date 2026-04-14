@@ -33,11 +33,11 @@ const OFFICIAL_USERS: OfficialUser[] = [
   { 
     username: 'mavebo', 
     name: 'Mavebo', 
-    icon: Crown, 
+    icon: BadgeCheck, 
     color: 'text-yellow-500', 
     badge: 'verified',
     role: 'Founder & CEO',
-    description: 'Creator of StartOrigin',
+    description: 'Founder of StartOrigin',
     category: 'official'
   },
   { 
@@ -67,6 +67,16 @@ const OFFICIAL_USERS: OfficialUser[] = [
     icon: Monitor, 
     color: 'text-violet-500', 
     badge: 'computer',
+    role: 'Friend',
+    description: 'StartOrigin Community Member',
+    category: 'friends'
+  },
+  { 
+    username: 'camilakiriek', 
+    name: 'Camila', 
+    icon: Star, 
+    color: 'text-amber-400', 
+    badge: 'star',
     role: 'Friend',
     description: 'StartOrigin Community Member',
     category: 'friends'
