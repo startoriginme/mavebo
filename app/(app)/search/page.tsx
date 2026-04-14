@@ -34,7 +34,7 @@ const OFFICIAL_USERS: OfficialUser[] = [
     username: 'mavebo', 
     name: 'Mavebo', 
     icon: BadgeCheck, 
-    color: 'text-yellow-500', 
+    color: 'text-blue-500', 
     badge: 'verified',
     role: 'Founder & CEO',
     description: 'Founder of StartOrigin',
