@@ -252,112 +252,118 @@ export default function AddPhotoModal({
   const currentPhoto = photos[currentPhotoIndex]
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between sticky top-0 bg-card/80 backdrop-blur-sm pb-1 z-10">
+    <div className="flex flex-col h-[85vh] max-h-[85vh]">
+      {/* Fixed Header */}
+      <div className="flex items-center justify-between pb-4 border-b border-border flex-shrink-0">
         <button type="button" onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
         <h2 className="text-base font-semibold text-foreground">
-          Add Photos {photos.length > 0 && `(${photos.length}/${MAX_PHOTOS})`}
+          Create Post {photos.length > 0 && `(${photos.length}/${MAX_PHOTOS})`}
         </h2>
         <button type="button" onClick={onClose} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground" aria-label="Close">
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {error && <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>}
+      {error && <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2 mt-3 flex-shrink-0">{error}</p>}
 
-      {/* Drop zone */}
-      {photos.length < MAX_PHOTOS && (
-        <div
-          ref={dropZoneRef}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={cn(
-            'h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all select-none',
-            dragOver ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-border hover:border-primary/50 hover:bg-muted/40',
-          )}
-        >
-          <Upload className="w-6 h-6 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground text-center leading-relaxed">
-            Drop photos here or click to browse<br />
-            <span className="text-xs text-primary">Up to {MAX_PHOTOS} photos • JPG, PNG, GIF</span>
-          </p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => e.target.files && addFiles(Array.from(e.target.files))}
-          />
-        </div>
-      )}
-
-      {/* Photos carousel */}
-      {photos.length > 0 && currentPhoto && (
-        <div className="glass rounded-xl overflow-hidden">
-          <div className="relative">
-            <div className="relative h-56 sm:h-64 bg-muted">
-              <img
-                src={currentPhoto.preview}
-                alt={currentPhoto.name}
-                className="w-full h-full object-contain bg-black/20"
-              />
-              
-              {photos.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={prevPhoto}
-                    className={cn(
-                      "absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-all",
-                      currentPhotoIndex === 0 && "opacity-50 cursor-not-allowed"
-                    )}
-                    disabled={currentPhotoIndex === 0}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={nextPhoto}
-                    className={cn(
-                      "absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-all",
-                      currentPhotoIndex === photos.length - 1 && "opacity-50 cursor-not-allowed"
-                    )}
-                    disabled={currentPhotoIndex === photos.length - 1}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </>
-              )}
-              
-              <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-                {currentPhotoIndex + 1} / {photos.length}
-              </div>
-            </div>
-            
-            <button
-              type="button"
-              onClick={() => removePhoto(currentPhotoIndex)}
-              className="absolute top-2 left-2 w-8 h-8 rounded-full bg-red-500/80 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
-              aria-label="Remove photo"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+      {/* Scrollable Settings Container */}
+      <div className="flex-1 overflow-y-auto py-4 space-y-4">
+        {/* Drop zone */}
+        {photos.length < MAX_PHOTOS && (
+          <div
+            ref={dropZoneRef}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={cn(
+              'h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all select-none',
+              dragOver ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-border hover:border-primary/50 hover:bg-muted/40',
+            )}
+          >
+            <Upload className="w-6 h-6 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground text-center leading-relaxed">
+              Drop photos here or click to browse<br />
+              <span className="text-xs text-primary">Up to {MAX_PHOTOS} photos • JPG, PNG, GIF</span>
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => e.target.files && addFiles(Array.from(e.target.files))}
+            />
           </div>
-          
-          <div className="p-4 flex flex-col gap-3">
+        )}
+
+        {/* Photos carousel - только если есть фото */}
+        {photos.length > 0 && currentPhoto && (
+          <div className="glass rounded-xl overflow-hidden">
+            <div className="relative">
+              <div className="relative h-56 sm:h-64 bg-muted">
+                <img
+                  src={currentPhoto.preview}
+                  alt={currentPhoto.name}
+                  className="w-full h-full object-contain bg-black/20"
+                />
+                
+                {photos.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={prevPhoto}
+                      className={cn(
+                        "absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-all",
+                        currentPhotoIndex === 0 && "opacity-50 cursor-not-allowed"
+                      )}
+                      disabled={currentPhotoIndex === 0}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={nextPhoto}
+                      className={cn(
+                        "absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-all",
+                        currentPhotoIndex === photos.length - 1 && "opacity-50 cursor-not-allowed"
+                      )}
+                      disabled={currentPhotoIndex === photos.length - 1}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+                
+                <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+                  {currentPhotoIndex + 1} / {photos.length}
+                </div>
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => removePhoto(currentPhotoIndex)}
+                className="absolute top-2 left-2 w-8 h-8 rounded-full bg-red-500/80 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+                aria-label="Remove photo"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Settings Form */}
+        {photos.length > 0 && currentPhoto && (
+          <div className="space-y-4">
             <input
               type="text"
               placeholder="Photo name"
               value={currentPhoto.name}
               onChange={(e) => updatePhoto(currentPhotoIndex, { name: e.target.value })}
               required
-              className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full px-3 py-2.5 rounded-xl bg-input border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
             
             <div className="grid grid-cols-2 gap-3">
@@ -386,7 +392,7 @@ export default function AddPhotoModal({
                   required={!!currentPhoto.collectionId}
                   className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                 >
-                  <option value="">{currentPhoto.collectionId ? 'Select album' : 'No album (unsorted)'}</option>
+                  <option value="">{currentPhoto.collectionId ? 'Select album' : 'No album'}</option>
                   {(albumsMap[currentPhoto.collectionId || ''] ?? []).map((a) => (
                     <option key={a.id} value={a.id}>{a.name}</option>
                   ))}
@@ -420,94 +426,81 @@ export default function AddPhotoModal({
                   <>
                     {currentPhoto.overridePrivacy ? (
                       currentPhoto.privacy === 'public' ? (
-                        <>
-                          <Globe className="w-3 h-3" />
-                          <span>Overriding collection privacy</span>
-                        </>
+                        <><Globe className="w-3 h-3" /> Overriding collection privacy</>
                       ) : (
-                        <>
-                          <Lock className="w-3 h-3" />
-                          <span>Overriding collection privacy</span>
-                        </>
+                        <><Lock className="w-3 h-3" /> Overriding collection privacy</>
                       )
                     ) : (
                       currentPhoto.privacy === 'public' ? (
-                        <>
-                          <Globe className="w-3 h-3" />
-                          <span>Inherited from collection</span>
-                        </>
+                        <><Globe className="w-3 h-3" /> Inherited from collection</>
                       ) : (
-                        <>
-                          <Lock className="w-3 h-3" />
-                          <span>Inherited from collection</span>
-                        </>
+                        <><Lock className="w-3 h-3" /> Inherited from collection</>
                       )
                     )}
                   </>
                 ) : (
                   <>
                     {currentPhoto.privacy === 'public' ? (
-                      <>
-                        <Globe className="w-3 h-3" />
-                        <span>Visible to everyone</span>
-                      </>
+                      <><Globe className="w-3 h-3" /> Visible to everyone</>
                     ) : (
-                      <>
-                        <Lock className="w-3 h-3" />
-                        <span>Visible only to you</span>
-                      </>
+                      <><Lock className="w-3 h-3" /> Visible only to you</>
                     )}
                   </>
                 )}
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Photos preview strip - теперь внизу, не перекрывает настройки */}
-      {photos.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 mt-2">
-          {photos.map((photo, idx) => (
-            <button
-              key={photo.id}
-              type="button"
-              onClick={() => setCurrentPhotoIndex(idx)}
-              className={cn(
-                "relative flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all",
-                idx === currentPhotoIndex ? "border-primary" : "border-transparent opacity-60"
-              )}
-            >
-              <img src={photo.preview} alt="" className="w-full h-full object-cover" />
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Progress */}
-      {loading && (
-        <div className="space-y-2">
-          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${uploadProgress}%` }}
-            />
+        {/* Progress */}
+        {loading && (
+          <div className="space-y-2">
+            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <p className="text-xs text-center text-muted-foreground">
+              Uploading... {uploadedCount} of {photos.length} ({uploadProgress}%)
+            </p>
           </div>
-          <p className="text-xs text-center text-muted-foreground">
-            Uploading... {uploadedCount} of {photos.length} ({uploadProgress}%)
-          </p>
-        </div>
-      )}
+        )}
+      </div>
 
-      {photos.length > 0 && (
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-60 sticky bottom-0"
-        >
-          {loading ? `Uploading... ${uploadProgress}%` : `Upload ${photos.length} Photo${photos.length > 1 ? 's' : ''}`}
-        </button>
-      )}
-    </form>
+      {/* Fixed Footer with Preview Strip and Submit Button */}
+      <div className="flex-shrink-0 border-t border-border pt-4 space-y-3">
+        {/* Photos preview strip */}
+        {photos.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {photos.map((photo, idx) => (
+              <button
+                key={photo.id}
+                type="button"
+                onClick={() => setCurrentPhotoIndex(idx)}
+                className={cn(
+                  "relative flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all",
+                  idx === currentPhotoIndex ? "border-primary" : "border-transparent opacity-60"
+                )}
+              >
+                <img src={photo.preview} alt="" className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Submit Button */}
+        {photos.length > 0 && (
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-60"
+          >
+            {loading ? `Uploading... ${uploadProgress}%` : `Upload ${photos.length} Photo${photos.length > 1 ? 's' : ''}`}
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
