@@ -8,14 +8,53 @@ import PWAInstall from '@/components/pwa-install'
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
 export const metadata: Metadata = {
-  title: 'StartOrigin',
-  description: 'Your personal photo album and social platform',
+  title: {
+    default: 'StartOrigin — No algorithms, pure photography',
+    template: '%s | StartOrigin'
+  },
+  description: 'StartOrigin — социальная сеть для фотографов без алгоритмов. Публикуй фото, получай ачивки, свайпай фид в Tinder Mode. Полная приватность и контроль.',
   generator: 'v0.app',
   manifest: '/manifest.json',
   icons: {
     icon: '/startoriginreal.png',
     shortcut: '/startoriginreal.png',
     apple: '/startoriginreal.png',
+  },
+  openGraph: {
+    title: 'StartOrigin — No algorithms, pure photography',
+    description: 'Социальная сеть для фотографов без алгоритмов. Публикуй фото, свайпай фид, получай ачивки. Только фотография, без слежки.',
+    url: 'https://startorigin.me',
+    siteName: 'StartOrigin',
+    images: [
+      {
+        url: '/startoriginreal.png',
+        width: 512,
+        height: 512,
+        alt: 'StartOrigin Logo',
+      },
+    ],
+    locale: 'ru_RU',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'StartOrigin — No algorithms, pure photography',
+    description: 'Приватная соцсеть для фотографов. Без алгоритмов, с ачивками и Tinder Mode.',
+    images: ['/startoriginreal.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  alternates: {
+    canonical: 'https://startorigin.me',
   },
 }
 
@@ -33,13 +72,41 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="ru" className={inter.variable}>
       <head>
         <link rel="apple-touch-icon" href="/startoriginreal.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="StartOrigin" />
+        
+        {/* SEO мета-теги */}
+        <meta name="keywords" content="фотография, социальная сеть, фотографы, приватность, no algorithms, pure photography, ачивки, tinder mode" />
+        <meta name="author" content="StartOrigin" />
+        <meta name="copyright" content="StartOrigin" />
+        
+        {/* Структурированные данные для сайта */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "name": "StartOrigin",
+              "alternateName": "StartOrigin.me",
+              "url": "https://startorigin.me",
+              "description": "No algorithms, pure photography — социальная сеть для фотографов без алгоритмов",
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": {
+                  "@type": "EntryPoint",
+                  "urlTemplate": "https://startorigin.me/search?q={search_term_string}"
+                },
+                "query-input": "required name=search_term_string"
+              }
+            })
+          }}
+        />
       </head>
       <body className="font-sans antialiased">
         <ProgressBar />
