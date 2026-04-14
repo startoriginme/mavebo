@@ -293,3 +293,77 @@ body.hide-nav aside,
 body.hide-nav nav {
   display: none !important;
 }
+/* Глобальный размер шрифта 16px для всего текста */
+html {
+  font-size: 16px;
+}
+
+/* Все текстовые элементы */
+body, 
+p, 
+span, 
+div, 
+h1, h2, h3, h4, h5, h6,
+a, 
+button,
+input, 
+textarea, 
+select,
+label,
+li,
+small,
+strong,
+em,
+blockquote,
+pre,
+code {
+  font-size: 16px;
+}
+
+/* Заголовки с относительным размером (но база 16px) */
+h1 { font-size: 2rem; }    /* 32px */
+h2 { font-size: 1.75rem; }  /* 28px */
+h3 { font-size: 1.5rem; }   /* 24px */
+h4 { font-size: 1.25rem; }  /* 20px */
+h5 { font-size: 1.125rem; } /* 18px */
+h6 { font-size: 1rem; }     /* 16px */
+
+/* Исключения для очень маленьких элементов */
+.text-xs {
+  font-size: 0.875rem !important; /* 14px - но можно оставить 16px если закомментировать */
+}
+
+.text-sm {
+  font-size: 1rem !important; /* 16px вместо 14px */
+}
+
+.text-lg {
+  font-size: 1.125rem !important; /* 18px */
+}
+
+.text-xl {
+  font-size: 1.25rem !important; /* 20px */
+}
+
+/* Мобильные устройства тоже 16px */
+@media (max-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+  
+  input, 
+  textarea, 
+  select,
+  button,
+  body,
+  p {
+    font-size: 16px !important;
+  }
+}
+
+/* Предотвращаем масштабирование на мобилках (уже есть) */
+input, 
+textarea, 
+select {
+  font-size: 16px !important;
+}
