@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     default: 'StartOrigin — No algorithms, pure photography',
     template: '%s | StartOrigin'
   },
-  description: 'StartOrigin — социальная сеть для фотографов без алгоритмов. Публикуй фото, получай ачивки, свайпай фид в Tinder Mode. Полная приватность и контроль.',
+  description: 'No Algorithms, Pure Photography',
   generator: 'v0.app',
   manifest: '/manifest.json',
   icons: {
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'StartOrigin — No algorithms, pure photography',
-    description: 'Социальная сеть для фотографов без алгоритмов. Публикуй фото, свайпай фид, получай ачивки. Только фотография, без слежки.',
+    description: 'No Algorithms, Pure Photography',
     url: 'https://startorigin.me',
     siteName: 'StartOrigin',
     images: [
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'StartOrigin — No algorithms, pure photography',
-    description: 'Приватная соцсеть для фотографов. Без алгоритмов, с ачивками и Tinder Mode.',
+    description: 'No Algorithms, Pure Photography',
     images: ['/startoriginreal.png'],
   },
   robots: {
@@ -81,7 +81,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="StartOrigin" />
         
         {/* SEO мета-теги */}
-        <meta name="keywords" content="фотография, социальная сеть, фотографы, приватность, no algorithms, pure photography, ачивки, tinder mode" />
+        <meta name="keywords" content="photography, social media, photographers, privacy, no algorithms, pure photography, achievments, tinder mode" />
         <meta name="author" content="StartOrigin" />
         <meta name="copyright" content="StartOrigin" />
         
@@ -95,7 +95,7 @@ export default function RootLayout({
               "name": "StartOrigin",
               "alternateName": "StartOrigin.me",
               "url": "https://startorigin.me",
-              "description": "No algorithms, pure photography — социальная сеть для фотографов без алгоритмов",
+              "description": "No algorithms, pure photography",
               "potentialAction": {
                 "@type": "SearchAction",
                 "target": {
