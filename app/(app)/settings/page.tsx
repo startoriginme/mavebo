@@ -31,8 +31,6 @@ export default function SettingsPage() {
   const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [accountLoading, setAccountLoading] = useState(false)
   const [accountError, setAccountError] = useState<string | null>(null)
@@ -79,11 +77,11 @@ export default function SettingsPage() {
 
   function applyDesign(selectedDesign: 'default' | 'glass') {
     if (selectedDesign === 'glass') {
-      document.documentElement.classList.add('glass-design')
-      // Добавляем класс glass ко всем основным элементам через data-атрибут
+      // Добавляем класс для включения glass-эффектов
+      document.documentElement.classList.add('glass-mode')
       document.body.classList.add('glass-mode')
     } else {
-      document.documentElement.classList.remove('glass-design')
+      document.documentElement.classList.remove('glass-mode')
       document.body.classList.remove('glass-mode')
     }
     localStorage.setItem('design', selectedDesign)
@@ -229,16 +227,13 @@ export default function SettingsPage() {
   const displayAvatar = avatarPreview ?? avatarUrl
 
   return (
-    <main className={cn(
-      "px-4 pt-6 pb-4 max-w-lg mx-auto",
-      design === 'glass' && "glass-mode"
-    )}>
+    <main className="px-4 pt-6 pb-4 max-w-lg mx-auto">
       <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-6">Settings</h1>
 
       {/* Profile Settings */}
       <div className={cn(
-        "rounded-2xl p-6 mb-4",
-        design === 'glass' ? "glass" : "bg-card border border-border"
+        "rounded-2xl p-6 mb-4 transition-all duration-300",
+        design === 'glass' ? "glass-juicy" : "bg-card border border-border"
       )}>
         <form onSubmit={handleSave} className="flex flex-col gap-5">
           {error && <p className="text-sm text-destructive bg-destructive/8 rounded-xl px-4 py-3">{error}</p>}
@@ -270,7 +265,7 @@ export default function SettingsPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-4 py-3 rounded-xl bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full px-4 py-3 rounded-xl bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
             />
           </div>
 
@@ -283,7 +278,7 @@ export default function SettingsPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_.]/g, ''))}
                 required
-                className="w-full pl-8 pr-4 py-3 rounded-xl bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full pl-8 pr-4 py-3 rounded-xl bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
               />
             </div>
           </div>
@@ -295,14 +290,19 @@ export default function SettingsPage() {
               onChange={(e) => setBio(e.target.value)}
               rows={3}
               placeholder="Tell people a little about yourself..."
-              className="w-full px-4 py-3 rounded-xl bg-input border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              className="w-full px-4 py-3 rounded-xl bg-input border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none transition-all"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            className={cn(
+              "w-full py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2",
+              design === 'glass' 
+                ? "liquid-button bg-primary text-primary-foreground" 
+                : "bg-primary text-primary-foreground hover:bg-primary/90"
+            )}
           >
             <Save className="w-4 h-4" />
             {saved ? 'Saved!' : loading ? 'Saving...' : 'Save Changes'}
@@ -316,7 +316,7 @@ export default function SettingsPage() {
         className={cn(
           "w-full py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 mb-4",
           design === 'glass' 
-            ? "glass text-foreground hover:bg-white/20" 
+            ? "liquid-button text-foreground" 
             : "bg-card border border-border text-foreground hover:bg-accent"
         )}
       >
@@ -330,7 +330,7 @@ export default function SettingsPage() {
         className={cn(
           "w-full py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 mb-4",
           design === 'glass' 
-            ? "glass text-foreground hover:bg-white/20" 
+            ? "liquid-button text-foreground" 
             : "bg-card border border-border text-foreground hover:bg-accent"
         )}
       >
@@ -340,7 +340,7 @@ export default function SettingsPage() {
 
       {/* Resources Section */}
       <div className={cn(
-        "rounded-2xl p-4 mb-4",
+        "rounded-2xl p-4 mb-4 transition-all duration-300",
         design === 'glass' ? "glass" : "bg-card border border-border"
       )}>
         <h2 className="text-sm font-semibold text-foreground mb-3">Resources</h2>
@@ -368,7 +368,7 @@ export default function SettingsPage() {
         className={cn(
           "w-full py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2",
           design === 'glass'
-            ? "glass text-destructive hover:bg-destructive/10"
+            ? "liquid-button text-destructive"
             : "bg-card border border-border text-destructive hover:bg-destructive/5"
         )}
       >
@@ -380,15 +380,15 @@ export default function SettingsPage() {
       {accountModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAccountModalOpen(false)}>
           <div className={cn(
-            "rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto",
-            design === 'glass' ? "glass" : "bg-background"
+            "rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto transition-all",
+            design === 'glass' ? "glass-juicy" : "bg-background"
           )} onClick={(e) => e.stopPropagation()}>
             <div className={cn(
               "sticky top-0 border-b border-border p-4 flex items-center justify-between",
               design === 'glass' ? "bg-white/80 backdrop-blur-sm" : "bg-background"
             )}>
               <h2 className="text-lg font-semibold">Account Settings</h2>
-              <button onClick={() => setAccountModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+              <button onClick={() => setAccountModalOpen(false)} className="p-1 rounded-lg hover:bg-muted transition-all">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -405,13 +405,16 @@ export default function SettingsPage() {
                   type="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm transition-all"
                   placeholder="newemail@example.com"
                 />
                 <button
                   onClick={handleUpdateEmail}
                   disabled={accountLoading}
-                  className="mt-2 w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
+                  className={cn(
+                    "mt-2 w-full py-2 rounded-lg text-sm font-medium transition-all",
+                    design === 'glass' ? "liquid-button bg-primary text-primary-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"
+                  )}
                 >
                   Update Email
                 </button>
@@ -426,7 +429,7 @@ export default function SettingsPage() {
                     type={showNewPassword ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm pr-10"
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm pr-10 transition-all"
                     placeholder="New password (min 6 characters)"
                   />
                   <button
@@ -443,14 +446,17 @@ export default function SettingsPage() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm transition-all"
                   placeholder="Confirm new password"
                 />
                 
                 <button
                   onClick={handleUpdatePassword}
                   disabled={accountLoading}
-                  className="mt-2 w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
+                  className={cn(
+                    "mt-2 w-full py-2 rounded-lg text-sm font-medium transition-all",
+                    design === 'glass' ? "liquid-button bg-primary text-primary-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"
+                  )}
                 >
                   Update Password
                 </button>
@@ -471,12 +477,15 @@ export default function SettingsPage() {
                     value={deleteConfirmText}
                     onChange={(e) => setDeleteConfirmText(e.target.value)}
                     placeholder='Type "DELETE" to confirm'
-                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm mb-3"
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm mb-3 transition-all"
                   />
                   <button
                     onClick={handleDeleteAccount}
                     disabled={accountLoading}
-                    className="w-full py-2 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90"
+                    className={cn(
+                      "w-full py-2 rounded-lg text-sm font-medium transition-all",
+                      design === 'glass' ? "liquid-button bg-destructive text-destructive-foreground" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    )}
                   >
                     Permanently Delete Account
                   </button>
@@ -491,15 +500,15 @@ export default function SettingsPage() {
       {appearanceModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAppearanceModalOpen(false)}>
           <div className={cn(
-            "rounded-2xl max-w-md w-full",
-            design === 'glass' ? "glass" : "bg-background"
+            "rounded-2xl max-w-md w-full transition-all",
+            design === 'glass' ? "glass-juicy" : "bg-background"
           )} onClick={(e) => e.stopPropagation()}>
             <div className={cn(
               "sticky top-0 border-b border-border p-4 flex items-center justify-between",
               design === 'glass' ? "bg-white/80 backdrop-blur-sm" : "bg-background"
             )}>
               <h2 className="text-lg font-semibold">Appearance</h2>
-              <button onClick={() => setAppearanceModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+              <button onClick={() => setAppearanceModalOpen(false)} className="p-1 rounded-lg hover:bg-muted transition-all">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -513,7 +522,11 @@ export default function SettingsPage() {
                     onClick={() => handleThemeChange('light')}
                     className={cn(
                       "flex items-center justify-center gap-2 py-3 rounded-xl border transition-all",
-                      theme === 'light' ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent"
+                      theme === 'light' 
+                        ? "border-primary bg-primary/10 text-primary" 
+                        : design === 'glass' 
+                          ? "liquid-button border-border" 
+                          : "border-border hover:bg-accent"
                     )}
                   >
                     <Sun className="w-4 h-4" />
@@ -523,7 +536,11 @@ export default function SettingsPage() {
                     onClick={() => handleThemeChange('dark')}
                     className={cn(
                       "flex items-center justify-center gap-2 py-3 rounded-xl border transition-all",
-                      theme === 'dark' ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent"
+                      theme === 'dark' 
+                        ? "border-primary bg-primary/10 text-primary" 
+                        : design === 'glass' 
+                          ? "liquid-button border-border" 
+                          : "border-border hover:bg-accent"
                     )}
                   >
                     <Moon className="w-4 h-4" />
@@ -540,7 +557,11 @@ export default function SettingsPage() {
                     onClick={() => handleDesignChange('default')}
                     className={cn(
                       "flex flex-col items-center gap-1 py-3 rounded-xl border transition-all",
-                      design === 'default' ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent"
+                      design === 'default' 
+                        ? "border-primary bg-primary/10 text-primary" 
+                        : design === 'glass'
+                          ? "liquid-button border-border"
+                          : "border-border hover:bg-accent"
                     )}
                   >
                     <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-700" />
@@ -550,7 +571,11 @@ export default function SettingsPage() {
                     onClick={() => handleDesignChange('glass')}
                     className={cn(
                       "flex flex-col items-center gap-1 py-3 rounded-xl border transition-all",
-                      design === 'glass' ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent"
+                      design === 'glass' 
+                        ? "border-primary bg-primary/10 text-primary" 
+                        : design === 'glass'
+                          ? "liquid-button border-border"
+                          : "border-border hover:bg-accent"
                     )}
                   >
                     <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur border border-white/30" />
