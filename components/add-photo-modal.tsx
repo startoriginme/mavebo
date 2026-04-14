@@ -185,14 +185,12 @@ export default function AddPhotoModal({
       return 
     }
     
-    // Проверяем все фото на наличие имени
     const invalidPhoto = photos.find(p => !p.name.trim())
     if (invalidPhoto) { 
       setError('Please enter a name for all photos.'); 
       return 
     }
     
-    // Валидация: если выбрана коллекция, альбом обязателен для всех фото
     const hasCollection = photos.some(p => p.collectionId)
     const missingAlbum = photos.some(p => p.collectionId && !p.albumId)
     if (hasCollection && missingAlbum) {
@@ -254,7 +252,7 @@ export default function AddPhotoModal({
   const currentPhoto = photos[currentPhotoIndex]
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
       {/* Header */}
       <div className="flex items-center justify-between sticky top-0 bg-card/80 backdrop-blur-sm pb-1 z-10">
         <button type="button" onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -302,16 +300,14 @@ export default function AddPhotoModal({
       {/* Photos carousel */}
       {photos.length > 0 && currentPhoto && (
         <div className="glass rounded-xl overflow-hidden">
-          {/* Carousel navigation */}
           <div className="relative">
-            <div className="relative h-64 bg-muted">
+            <div className="relative h-56 sm:h-64 bg-muted">
               <img
                 src={currentPhoto.preview}
                 alt={currentPhoto.name}
                 className="w-full h-full object-contain bg-black/20"
               />
               
-              {/* Navigation arrows */}
               {photos.length > 1 && (
                 <>
                   <button
@@ -339,13 +335,11 @@ export default function AddPhotoModal({
                 </>
               )}
               
-              {/* Counter */}
               <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
                 {currentPhotoIndex + 1} / {photos.length}
               </div>
             </div>
             
-            {/* Remove button */}
             <button
               type="button"
               onClick={() => removePhoto(currentPhotoIndex)}
@@ -400,7 +394,6 @@ export default function AddPhotoModal({
               </div>
             </div>
             
-            {/* Privacy selection */}
             <div className="flex flex-col gap-2">
               <label className="text-xs text-muted-foreground">Privacy</label>
               <div className="flex gap-2">
@@ -422,7 +415,6 @@ export default function AddPhotoModal({
                 ))}
               </div>
               
-              {/* Privacy info */}
               <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 text-xs text-muted-foreground">
                 {currentPhoto.collectionId ? (
                   <>
@@ -430,24 +422,24 @@ export default function AddPhotoModal({
                       currentPhoto.privacy === 'public' ? (
                         <>
                           <Globe className="w-3 h-3" />
-                          <span>Overriding collection privacy. This photo will be <strong>public</strong></span>
+                          <span>Overriding collection privacy</span>
                         </>
                       ) : (
                         <>
                           <Lock className="w-3 h-3" />
-                          <span>Overriding collection privacy. This photo will be <strong>private</strong></span>
+                          <span>Overriding collection privacy</span>
                         </>
                       )
                     ) : (
                       currentPhoto.privacy === 'public' ? (
                         <>
                           <Globe className="w-3 h-3" />
-                          <span>Inherited from collection. This photo will be <strong>public</strong></span>
+                          <span>Inherited from collection</span>
                         </>
                       ) : (
                         <>
                           <Lock className="w-3 h-3" />
-                          <span>Inherited from collection. This photo will be <strong>private</strong></span>
+                          <span>Inherited from collection</span>
                         </>
                       )
                     )}
@@ -457,12 +449,12 @@ export default function AddPhotoModal({
                     {currentPhoto.privacy === 'public' ? (
                       <>
                         <Globe className="w-3 h-3" />
-                        <span>This photo will be visible to everyone</span>
+                        <span>Visible to everyone</span>
                       </>
                     ) : (
                       <>
                         <Lock className="w-3 h-3" />
-                        <span>This photo will be visible only to you</span>
+                        <span>Visible only to you</span>
                       </>
                     )}
                   </>
@@ -473,16 +465,16 @@ export default function AddPhotoModal({
         </div>
       )}
 
-      {/* Photos preview strip */}
+      {/* Photos preview strip - теперь внизу, не перекрывает настройки */}
       {photos.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="flex gap-2 overflow-x-auto pb-2 mt-2">
           {photos.map((photo, idx) => (
             <button
               key={photo.id}
               type="button"
               onClick={() => setCurrentPhotoIndex(idx)}
               className={cn(
-                "relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
+                "relative flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all",
                 idx === currentPhotoIndex ? "border-primary" : "border-transparent opacity-60"
               )}
             >
