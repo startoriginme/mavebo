@@ -33,7 +33,7 @@ export const metadata: Metadata = {
         alt: 'StartOrigin Logo',
       },
     ],
-    locale: 'ru_RU',
+    locale: 'en_EN',
     type: 'website',
   },
   twitter: {
@@ -72,7 +72,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ru" className={inter.variable}>
+    <html lang="en" className={inter.variable}>
       <head>
         <link rel="apple-touch-icon" href="/startoriginreal.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
