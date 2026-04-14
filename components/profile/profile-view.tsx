@@ -286,11 +286,15 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   const isViscaelbarca = profile.username === 'viscaelbarca' || profile.id === 'ce0f7b34-b8d7-41b7-8437-dc3fc95399bd'
 const isZaharques = profile.username === 'zaharques' || profile.id === '9e6a9c61-1205-4149-9328-7ea038b10726'
   const isMavebo = profile.username === 'mavebo' || profile.id === 'fb94ce38-cdd4-4968-9e3a-ed49e12693c0'
+    const isCamilakiriek = profile.username === 'camilakiriek' || profile.id === '87fbca9a-f9ea-4f58-b1e5-c6bf6d6cce7e'
   
 
   
   if (isWinterWastaken && !badges.includes('snowflake')) {
     badges = [...badges, 'snowflake']
+  }
+    if (isCamilakiriek && !badges.includes('star')) {
+    badges = [...badges, 'star']
   }
 
   if (isViscaelbarca && !badges.includes('star')) {
