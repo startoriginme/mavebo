@@ -5,16 +5,16 @@
 
 :root {
   /* White theme with black accents */
-  --background: oklch(1 0 0);
+ --background: oklch(1 0 0);
   --foreground: oklch(0.1 0.015 250);
 
-  --card: oklch(1 0 0);
+  --card: oklch(1 0 0 / 0.65);
   --card-foreground: oklch(0.1 0.015 250);
 
-  --popover: oklch(1 0 0);
+  --popover: oklch(1 0 0 / 0.8);
   --popover-foreground: oklch(0.1 0.015 250);
 
-  --primary: oklch(0.15 0.01 250);
+  --primary: oklch(0.15 0.01 250); /* Black accent */
   --primary-foreground: oklch(0.99 0 0);
 
   --secondary: oklch(0.95 0.008 250);
@@ -29,15 +29,39 @@
   --destructive: oklch(0.637 0.237 25.331);
   --destructive-foreground: oklch(0.99 0 0);
 
-  --border: oklch(0.86 0.008 250 / 0.3);
+  --border: oklch(0.86 0.008 250 / 0.4);
   --input: oklch(0.97 0.005 250);
-  --ring: oklch(0.15 0.01 250 / 0.2);
+  --ring: oklch(0.15 0.01 250 / 0.35);
 
-  --radius: 0.75rem;
+  /* Enhanced glass variables */
+  --glass: oklch(1 0 0 / 0.45);
+  --glass-highlight: oklch(1 0 0 / 0.7);
+  --glass-border: oklch(1 0 0 / 0.6);
+  --glass-border-strong: oklch(0.9 0 0 / 0.8);
+  --glass-shadow: 0 20px 40px -12px oklch(0.12 0.015 250 / 0.2),
+                   0 8px 24px -8px oklch(0.12 0.015 250 / 0.12),
+                   0 2px 8px oklch(1 0 0 / 0.3) inset,
+                   0 -1px 2px oklch(1 0 0 / 0.5) inset;
+
+  --nav-height: 4rem;
+  --sidebar-width: 15rem;
+
+  --radius: 1.25rem;
+
+  --sidebar: oklch(0.99 0.003 250 / 0.75);
+  --sidebar-foreground: oklch(0.1 0.015 250);
+  --sidebar-primary: oklch(0.15 0.01 250);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.95 0.008 250);
+  --sidebar-accent-foreground: oklch(0.2 0.015 250);
+  --sidebar-border: oklch(0.88 0.008 250 / 0.4);
+  --sidebar-ring: oklch(0.15 0.01 250 / 0.35);
 }
 
 @theme inline {
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -57,82 +81,215 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 
-  --radius-sm: calc(var(--radius) - 0.25rem);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 0.25rem);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 8px);
+  --radius-2xl: calc(var(--radius) + 16px);
 }
 
 @layer base {
   * {
-    border-color: var(--border);
+    @apply border-border outline-ring/50;
   }
-  
   body {
-    background: var(--background);
-    color: var(--foreground);
+    @apply bg-background text-foreground;
+    background-attachment: fixed;
     -webkit-font-smoothing: antialiased;
+    position: relative;
+  }
+
+  /* Add micro-interactions to all interactive elements */
+  button, a, .interactive {
+    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  button:active {
+    transform: scale(0.97);
   }
 }
 
 @layer utilities {
-  /* Простые карточки без blur */
+  /* Super juicy glass effect */
   .glass {
-    background: white;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: var(--radius-lg);
+    background: var(--glass);
+    backdrop-filter: blur(24px) saturate(2.2);
+    -webkit-backdrop-filter: blur(24px) saturate(2.2);
+    border: 1.5px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
   }
-  
+
+  .glass:hover {
+    background: oklch(1 0 0 / 0.55);
+    border-color: var(--glass-border-strong);
+    box-shadow: 0 24px 48px -16px oklch(0.12 0.015 250 / 0.25),
+                0 12px 32px -12px oklch(0.12 0.015 250 / 0.15),
+                0 4px 12px oklch(1 0 0 / 0.4) inset,
+                0 -2px 4px oklch(1 0 0 / 0.6) inset;
+    transform: translateY(-2px);
+  }
+
+  /* Subtle glass variant */
+  .glass-subtle {
+    background: oklch(1 0 0 / 0.35);
+    backdrop-filter: blur(16px) saturate(1.8);
+    -webkit-backdrop-filter: blur(16px) saturate(1.8);
+    border: 1px solid oklch(1 0 0 / 0.45);
+    box-shadow: 0 12px 32px -12px oklch(0.12 0.015 250 / 0.15),
+                0 2px 8px oklch(1 0 0 / 0.2) inset,
+                0 -1px 2px oklch(1 0 0 / 0.3) inset;
+  }
+
+  /* Navigation bar specific glass */
   .nav-glass {
-    background: rgba(255, 255, 255, 0.98);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    background: oklch(0.98 0.005 250 / 0.75);
+    backdrop-filter: blur(28px) saturate(2.5);
+    -webkit-backdrop-filter: blur(28px) saturate(2.5);
+    border-bottom: 1.5px solid oklch(1 0 0 / 0.6);
+    box-shadow: 0 8px 24px -8px oklch(0.12 0.015 250 / 0.15),
+                0 1px 4px oklch(1 0 0 / 0.4) inset;
+  }
+
+  /* Extra juicy glass for cards and important elements */
+  .glass-juicy {
+    background: oklch(1 0 0 / 0.5);
+    backdrop-filter: blur(28px) saturate(2.4);
+    -webkit-backdrop-filter: blur(28px) saturate(2.4);
+    border: 2px solid oklch(1 0 0 / 0.7);
+    box-shadow: 0 28px 48px -20px oklch(0.12 0.015 250 / 0.3),
+                0 16px 32px -16px oklch(0.12 0.015 250 / 0.2),
+                0 8px 16px -8px oklch(1 0 0 / 0.3) inset,
+                0 -4px 8px oklch(1 0 0 / 0.5) inset;
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .glass-juicy:hover {
+    background: oklch(1 0 0 / 0.6);
+    border-color: oklch(1 0 0 / 0.85);
+    box-shadow: 0 32px 56px -24px oklch(0.12 0.015 250 / 0.35),
+                0 20px 40px -20px oklch(0.12 0.015 250 / 0.25),
+                0 12px 24px -12px oklch(1 0 0 / 0.35) inset,
+                0 -6px 12px oklch(1 0 0 / 0.6) inset;
+    transform: translateY(-4px) scale(1.02);
+  }
+
+  /* Liquid button style - with black accent */
+  .liquid-button {
+    background: var(--glass);
+    backdrop-filter: blur(20px) saturate(2.2);
+    -webkit-backdrop-filter: blur(20px) saturate(2.2);
+    border: 1.5px solid var(--glass-border);
+    box-shadow: 0 12px 28px -12px oklch(0.12 0.015 250 / 0.2),
+                0 4px 12px oklch(1 0 0 / 0.3) inset,
+                0 -2px 4px oklch(1 0 0 / 0.4) inset;
+    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .liquid-button:hover {
+    background: oklch(1 0 0 / 0.6);
+    border-color: var(--glass-border-strong);
+    box-shadow: 0 16px 32px -14px oklch(0.12 0.015 250 / 0.25),
+                0 6px 16px oklch(1 0 0 / 0.4) inset,
+                0 -3px 6px oklch(1 0 0 / 0.5) inset;
+    transform: translateY(-2px);
+  }
+
+  .liquid-button:active {
+    transform: translateY(2px) scale(0.96);
+    box-shadow: 0 4px 12px -8px oklch(0.12 0.015 250 / 0.2),
+                0 2px 8px oklch(1 0 0 / 0.2) inset,
+                0 -1px 2px oklch(1 0 0 / 0.3) inset;
+  }
+
+  /* Icon with liquid effect */
+  .liquid-icon {
+    filter: drop-shadow(0 4px 6px oklch(0.12 0.015 250 / 0.1));
+    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .liquid-icon:hover {
+    filter: drop-shadow(0 8px 12px oklch(0.12 0.015 250 / 0.15));
+    transform: scale(1.1) translateY(-2px);
+  }
+
+  .liquid-icon:active {
+    filter: drop-shadow(0 2px 4px oklch(0.12 0.015 250 / 0.1));
+    transform: scale(0.95);
+  }
+
+  /* Glass card with extra depth */
+  .glass-deep {
+    background: oklch(1 0 0 / 0.4);
+    backdrop-filter: blur(24px) saturate(2.2);
+    -webkit-backdrop-filter: blur(24px) saturate(2.2);
+    border: 1.5px solid oklch(1 0 0 / 0.5);
+    box-shadow: 0 32px 64px -24px oklch(0.12 0.015 250 / 0.25),
+                0 16px 32px -16px oklch(0.12 0.015 250 / 0.15),
+                0 8px 16px -8px oklch(1 0 0 / 0.25) inset,
+                0 -4px 8px oklch(1 0 0 / 0.35) inset;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-deep::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 30% 20%, oklch(1 0 0 / 0.3), transparent 60%);
+    pointer-events: none;
+  }
+
+  .glass-deep::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 70% 80%, oklch(1 0 0 / 0.2), transparent 60%);
+    pointer-events: none;
   }
 }
 
-/* Микро-интеракции */
-button, a {
-  transition: opacity 0.15s ease;
+/* Smooth scrolling */
+html {
+  scroll-behavior: auto;
 }
 
-button:active {
-  transform: scale(0.98);
+/* Custom selection color */
+::selection {
+  background: oklch(0.15 0.01 250 / 0.2);
+  color: oklch(0.1 0.015 250);
 }
 
-/* Запрещаем масштабирование на мобилках */
-input, textarea, select {
-  font-size: 16px;
+
+/* Предотвращаем масштабирование на мобильных устройствах */
+input, 
+textarea, 
+select {
+  font-size: 16px !important;
 }
 
+/* Для очень маленьких экранов */
 @media (max-width: 768px) {
-  input, textarea, select {
-    font-size: 16px;
+  input, 
+  textarea, 
+  select {
+    font-size: 16px !important;
   }
 }
 
-/* Tinder Mode - скрываем навигацию */
+/* Скрываем навигацию в Tinder Mode */
 body.hide-nav aside,
 body.hide-nav nav {
-  display: none;
-}
-/* Добавьте это в ваш глобальный CSS */
-body.glass-mode {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-}
-
-body.glass-mode.dark {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-}
-
-/* Улучшенный glass-эффект для всех элементов */
-.glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.dark .glass {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: none !important;
 }
