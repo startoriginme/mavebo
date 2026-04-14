@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Camera, LogOut, Save, BookOpen, Users, User, Palette, Moon, Sun, Sparkles, AlertTriangle, Eye, EyeOff } from 'lucide-react'
+import { Camera, LogOut, Save, BookOpen, Users, User, Palette, Moon, Sun, Sparkles, AlertTriangle, Eye, EyeOff, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function SettingsPage() {
@@ -80,8 +80,11 @@ export default function SettingsPage() {
   function applyDesign(selectedDesign: 'default' | 'glass') {
     if (selectedDesign === 'glass') {
       document.documentElement.classList.add('glass-design')
+      // Добавляем класс glass ко всем основным элементам через data-атрибут
+      document.body.classList.add('glass-mode')
     } else {
       document.documentElement.classList.remove('glass-design')
+      document.body.classList.remove('glass-mode')
     }
     localStorage.setItem('design', selectedDesign)
   }
@@ -226,11 +229,17 @@ export default function SettingsPage() {
   const displayAvatar = avatarPreview ?? avatarUrl
 
   return (
-    <main className="px-4 pt-6 pb-4 max-w-lg mx-auto">
+    <main className={cn(
+      "px-4 pt-6 pb-4 max-w-lg mx-auto",
+      design === 'glass' && "glass-mode"
+    )}>
       <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-6">Settings</h1>
 
       {/* Profile Settings */}
-      <div className="glass rounded-2xl p-6 mb-4">
+      <div className={cn(
+        "rounded-2xl p-6 mb-4",
+        design === 'glass' ? "glass" : "bg-card border border-border"
+      )}>
         <form onSubmit={handleSave} className="flex flex-col gap-5">
           {error && <p className="text-sm text-destructive bg-destructive/8 rounded-xl px-4 py-3">{error}</p>}
 
@@ -304,7 +313,12 @@ export default function SettingsPage() {
       {/* Account Settings Button */}
       <button
         onClick={() => setAccountModalOpen(true)}
-        className="w-full py-3 rounded-xl bg-card border border-border text-sm font-medium text-foreground hover:bg-accent transition-all flex items-center justify-center gap-2 mb-4"
+        className={cn(
+          "w-full py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 mb-4",
+          design === 'glass' 
+            ? "glass text-foreground hover:bg-white/20" 
+            : "bg-card border border-border text-foreground hover:bg-accent"
+        )}
       >
         <User className="w-4 h-4" />
         Account Settings
@@ -313,14 +327,22 @@ export default function SettingsPage() {
       {/* Appearance Settings Button */}
       <button
         onClick={() => setAppearanceModalOpen(true)}
-        className="w-full py-3 rounded-xl bg-card border border-border text-sm font-medium text-foreground hover:bg-accent transition-all flex items-center justify-center gap-2 mb-4"
+        className={cn(
+          "w-full py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 mb-4",
+          design === 'glass' 
+            ? "glass text-foreground hover:bg-white/20" 
+            : "bg-card border border-border text-foreground hover:bg-accent"
+        )}
       >
         <Palette className="w-4 h-4" />
         Appearance
       </button>
 
       {/* Resources Section */}
-      <div className="glass rounded-2xl p-4 mb-4">
+      <div className={cn(
+        "rounded-2xl p-4 mb-4",
+        design === 'glass' ? "glass" : "bg-card border border-border"
+      )}>
         <h2 className="text-sm font-semibold text-foreground mb-3">Resources</h2>
         <div className="space-y-2">
           <Link
@@ -343,7 +365,12 @@ export default function SettingsPage() {
       {/* Logout Button */}
       <button
         onClick={handleLogout}
-        className="w-full py-3 rounded-xl bg-card border border-border text-sm font-medium text-destructive hover:bg-destructive/5 transition-all flex items-center justify-center gap-2"
+        className={cn(
+          "w-full py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2",
+          design === 'glass'
+            ? "glass text-destructive hover:bg-destructive/10"
+            : "bg-card border border-border text-destructive hover:bg-destructive/5"
+        )}
       >
         <LogOut className="w-4 h-4" />
         Sign Out
@@ -352,8 +379,14 @@ export default function SettingsPage() {
       {/* Account Settings Modal */}
       {accountModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAccountModalOpen(false)}>
-          <div className="bg-background rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-background border-b border-border p-4 flex items-center justify-between">
+          <div className={cn(
+            "rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto",
+            design === 'glass' ? "glass" : "bg-background"
+          )} onClick={(e) => e.stopPropagation()}>
+            <div className={cn(
+              "sticky top-0 border-b border-border p-4 flex items-center justify-between",
+              design === 'glass' ? "bg-white/80 backdrop-blur-sm" : "bg-background"
+            )}>
               <h2 className="text-lg font-semibold">Account Settings</h2>
               <button onClick={() => setAccountModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
                 <X className="w-5 h-5" />
@@ -457,8 +490,14 @@ export default function SettingsPage() {
       {/* Appearance Settings Modal */}
       {appearanceModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAppearanceModalOpen(false)}>
-          <div className="bg-background rounded-2xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-background border-b border-border p-4 flex items-center justify-between">
+          <div className={cn(
+            "rounded-2xl max-w-md w-full",
+            design === 'glass' ? "glass" : "bg-background"
+          )} onClick={(e) => e.stopPropagation()}>
+            <div className={cn(
+              "sticky top-0 border-b border-border p-4 flex items-center justify-between",
+              design === 'glass' ? "bg-white/80 backdrop-blur-sm" : "bg-background"
+            )}>
               <h2 className="text-lg font-semibold">Appearance</h2>
               <button onClick={() => setAppearanceModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
                 <X className="w-5 h-5" />
