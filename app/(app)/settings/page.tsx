@@ -157,7 +157,7 @@ export default function SettingsPage() {
           <button
             type="submit"
             disabled={loading}
-            className="liquid-button w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl bg-black text-white text-sm font-semibold transition-all flex items-center justify-center gap-2 hover:bg-black/90 active:scale-[0.98]"
           >
             <Save className="w-4 h-4" />
             {saved ? 'Saved!' : loading ? 'Saving...' : 'Save Changes'}
