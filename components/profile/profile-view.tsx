@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Photo, BadgeType } from '@/lib/types'
-import { UserPlus, UserCheck, Images, BadgeCheck, Snowflake, Monitor, Star, Settings, Trophy, Flame, Camera, Sparkles, X, Search, Upload, Eye, EyeOff, Edit2, Minus, Plus } from 'lucide-react'
+import { UserPlus, UserCheck, Images, BadgeCheck, Snowflake, Monitor, Star, Settings, Trophy, Flame, Camera, Sparkles, X, Search, Upload, Eye, EyeOff, Edit2, Minus, Plus, Coins } from 'lucide-react'
 import PhotoViewer from '@/components/photo-viewer'
 import Link from 'next/link'
 
@@ -78,6 +78,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   const [hideSwipeCount, setHideSwipeCount] = useState(false)
   const [hiddenAchievements, setHiddenAchievements] = useState<Set<string>>(new Set())
   const [showHiddenAchievements, setShowHiddenAchievements] = useState(false)
+  const [originsBalance, setOriginsBalance] = useState(0)
 
   // Загружаем данные пользователя
   useEffect(() => {
@@ -93,11 +94,30 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     }
   }, [uploadCount])
 
+  // Пересчитываем баланс Origins при изменении свайпов и фоток
+  useEffect(() => {
+    calculateOriginsBalance()
+  }, [swipeCount, uploadCount])
+
+  async function calculateOriginsBalance() {
+    // Формула: количество фоток (1 за каждую) + (свайпы * 0.5)
+    const balance = uploadCount + (swipeCount * 0.5)
+    setOriginsBalance(balance)
+    
+    // Сохраняем баланс в БД (опционально, если нужно хранить)
+    if (isOwn) {
+      await supabase
+        .from('profiles')
+        .update({ origins_balance: balance })
+        .eq('id', profile.id)
+    }
+  }
+
   async function loadUserStats() {
     // Загружаем счетчик свайпов
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('swipe_count')
+      .select('swipe_count, origins_balance')
       .eq('id', profile.id)
       .single()
     
@@ -106,6 +126,9 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
       setSwipeCount(count)
       setOriginalSwipeCount(count)
       setTempSwipeValue(count)
+      if (profileData.origins_balance !== undefined) {
+        setOriginsBalance(profileData.origins_balance)
+      }
     }
     
     // Загружаем количество фото
@@ -429,6 +452,21 @@ if (isZaharques && !badges.includes('computer')) {
             )}
           </div>
         </div>
+
+        {/* Origins Balance - только для владельца профиля */}
+        {isOwn && (
+          <div className="mt-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
+            <div className="flex items-center justify-center gap-2">
+              <Coins className="w-4 h-4 text-amber-500" />
+              <p className="text-sm font-semibold text-foreground">
+                {originsBalance.toFixed(1)} Origins
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {uploadCount} photos + {swipeCount} swipes ×0.5
+            </p>
+          </div>
+        )}
 
         {isOwn ? (
           <Link
