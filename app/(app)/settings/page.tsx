@@ -4,8 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X, Eye, EyeOff } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X } from 'lucide-react'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -28,7 +27,7 @@ export default function SettingsPage() {
   const [originsModalOpen, setOriginsModalOpen] = useState(false)
   const [secretModalOpen, setSecretModalOpen] = useState(false)
   
-  // Shop modal state (для отслеживания шага)
+  // Shop modal state
   const [shopDialogStep, setShopDialogStep] = useState(0)
   const shopDialogMessages = [
     "No entry.",
@@ -65,17 +64,13 @@ export default function SettingsPage() {
         setAvatarUrl(data.avatar_url)
       }
       
-      // Load origins balance
       await loadOriginsBalance(user.id)
-      
-      // Check if secret achievement is already completed
       await checkSecretAchievement(user.id)
     }
     load()
   }, [])
 
   async function loadOriginsBalance(userId: string) {
-    // Get swipe count
     const { data: profileData } = await supabase
       .from('profiles')
       .select('swipe_count')
@@ -85,7 +80,6 @@ export default function SettingsPage() {
     const swipeCountValue = profileData?.swipe_count || 0
     setSwipeCount(swipeCountValue)
     
-    // Get photo count
     const { count: photoCount } = await supabase
       .from('photos')
       .select('*', { count: 'exact', head: true })
@@ -94,7 +88,6 @@ export default function SettingsPage() {
     const photoCountValue = photoCount || 0
     setUploadCount(photoCountValue)
     
-    // Calculate origins: photos (1 each) + swipes * 0.5
     const balance = photoCountValue + (swipeCountValue * 0.5)
     setOriginsBalance(balance)
   }
@@ -273,7 +266,7 @@ export default function SettingsPage() {
       {/* Shop Button */}
       <button
         onClick={handleShopClick}
-        className="w-full py-3 rounded-xl glass mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white/20"
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
       >
         <ShoppingBag className="w-4 h-4" />
         Shop
@@ -282,7 +275,7 @@ export default function SettingsPage() {
       {/* My Origins Button */}
       <button
         onClick={() => setOriginsModalOpen(true)}
-        className="w-full py-3 rounded-xl glass mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white/20"
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
       >
         <Coins className="w-4 h-4" />
         My Origins
@@ -291,7 +284,7 @@ export default function SettingsPage() {
       {/* Secret Button */}
       <button
         onClick={() => setSecretModalOpen(true)}
-        className="w-full py-3 rounded-xl glass mb-4 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white/20"
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-4 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
       >
         <Key className="w-4 h-4" />
         Secret
@@ -324,7 +317,7 @@ export default function SettingsPage() {
       {/* Logout Button */}
       <button
         onClick={handleLogout}
-        className="liquid-button w-full py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 text-destructive"
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border text-sm font-medium transition-all flex items-center justify-center gap-2 text-destructive hover:bg-white dark:hover:bg-gray-900"
       >
         <LogOut className="w-4 h-4" />
         Sign Out
@@ -332,8 +325,8 @@ export default function SettingsPage() {
 
       {/* Shop Modal */}
       {shopModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShopModalOpen(false)}>
-          <div className="glass rounded-2xl max-w-md w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShopModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="relative h-48 bg-cover bg-center" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=800&h=400&fit=crop)' }}>
               <button
                 onClick={() => setShopModalOpen(false)}
@@ -348,7 +341,7 @@ export default function SettingsPage() {
               </p>
               <button
                 onClick={handleShopNext}
-                className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all"
+                className="w-full py-3 rounded-xl bg-black dark:bg-white text-white dark:text-black text-sm font-semibold hover:bg-black/90 dark:hover:bg-white/90 transition-all"
               >
                 {shopDialogStep + 1 < shopDialogMessages.length ? 'Continue...' : 'Close'}
               </button>
@@ -359,8 +352,8 @@ export default function SettingsPage() {
 
       {/* My Origins Modal */}
       {originsModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setOriginsModalOpen(false)}>
-          <div className="glass rounded-2xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setOriginsModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-border p-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Coins className="w-5 h-5 text-amber-500" />
@@ -389,7 +382,7 @@ export default function SettingsPage() {
               
               <button
                 disabled
-                className="w-full py-3 rounded-xl bg-muted text-muted-foreground text-sm font-semibold cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-sm font-semibold cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Coins className="w-4 h-4" />
                 Add Origins to Balance (Coming Soon)
@@ -399,10 +392,10 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Secret Modal - Hidden Button Quest */}
+      {/* Secret Modal */}
       {secretModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSecretModalOpen(false)}>
-          <div className="glass rounded-2xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setSecretModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-border p-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Key className="w-5 h-5 text-purple-500" />
@@ -424,33 +417,27 @@ export default function SettingsPage() {
                     Find the hidden button to unlock "Secret Agent: 1st Quest" achievement
                   </p>
                   
-                  <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-8 mb-4 overflow-hidden">
+                  <div className="relative bg-gradient-to-br from-gray-700 to-gray-900 rounded-xl p-8 mb-4 overflow-hidden">
                     <img 
                       src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&h=300&fit=crop" 
                       alt="Mysterious background" 
-                      className="w-full h-40 object-cover rounded-lg opacity-70"
+                      className="w-full h-40 object-cover rounded-lg opacity-80"
                     />
                     
-                    {/* Скрытая кнопка - нужно найти! */}
                     <button
                       onClick={completeSecretQuest}
                       className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-purple-500/0 hover:bg-purple-500/80 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100"
-                      style={{ 
-                        boxShadow: 'none',
-                        background: secretButtonFound ? 'rgba(168, 85, 247, 0.8)' : 'transparent'
-                      }}
                       onMouseEnter={() => setSecretButtonFound(true)}
                       onMouseLeave={() => setSecretButtonFound(false)}
                     >
                       <Key className="w-4 h-4 text-white" />
                     </button>
                     
-                    {/* Подсказка при наведении на область */}
                     <button
-                      className="absolute top-3 left-3 w-6 h-6 rounded-full bg-gray-500/30 hover:bg-gray-500/50 transition-all flex items-center justify-center group"
+                      className="absolute top-3 left-3 w-6 h-6 rounded-full bg-gray-500/50 hover:bg-gray-500/70 transition-all flex items-center justify-center group"
                       onClick={() => setShowSecretHint(!showSecretHint)}
                     >
-                      <span className="text-white text-xs">?</span>
+                      <span className="text-white text-xs font-bold">?</span>
                     </button>
                   </div>
                   
