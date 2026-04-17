@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Photo, BadgeType } from '@/lib/types'
-import { UserPlus, UserCheck, Images, BadgeCheck, Snowflake, Monitor, Star, Settings, Trophy, Flame, Camera, Sparkles, X, Search, Upload, Eye, EyeOff, Edit2, Minus, Plus, Coins } from 'lucide-react'
+import { UserPlus, UserCheck, Images, BadgeCheck, Snowflake, Monitor, Star, Settings, Trophy, Flame, Camera, Sparkles, X, Search, Upload, Eye, EyeOff, Edit2, Minus, Plus, Coins, Play, GalleryHorizontalEnd } from 'lucide-react'
 import PhotoViewer from '@/components/photo-viewer'
 import Link from 'next/link'
 
@@ -23,19 +23,19 @@ const BADGE_CONFIG: Record<BadgeType, { icon: React.ElementType; color: string; 
 
 // Ачивки за свайпы
 const SWIPE_ACHIEVEMENTS = [
-  { count: 10, title: "Photo Explorer", icon: Camera, color: "text-green-500", description: "Swiped 10 photos" },
-  { count: 30, title: "Photo Hunter", icon: Search, color: "text-blue-500", description: "Swiped 30 photos" },
-  { count: 60, title: "Photo Master", icon: Star, color: "text-purple-500", description: "Swiped 60 photos" },
-  { count: 120, title: "Photo Legend", icon: Flame, color: "text-orange-500", description: "Swiped 120 photos" },
-  { count: 250, title: "Photo Guru", icon: Sparkles, color: "text-yellow-500", description: "Swiped 250 photos" },
-  { count: 500, title: "Photo God", icon: Trophy, color: "text-cyan-500", description: "Swiped 500 photos" },
+  { count: 10, title: "Tinder Mode Exists?", icon: Play, color: "text-black-500", description: "Swiped 10 photos" },
+  { count: 30, title: "Can't Stop Swiping", icon: GalleryHorizontalEnd, color: "text-blue-500", description: "Swiped 30 photos" },
+  { count: 60, title: "Looking for... What?", icon: Star, color: "text-purple-500", description: "Swiped 60 photos" },
+  { count: 120, title: "Swipe. Swipe. Swipe", icon: Flame, color: "text-orange-500", description: "Swiped 120 photos" },
+  { count: 250, title: "Make Tinder Mode Shine", icon: Sparkles, color: "text-yellow-500", description: "Swiped 250 photos" },
+  { count: 500, title: "Stop. It's the Final Trophy", icon: Trophy, color: "text-cyan-500", description: "Swiped 500 photos" },
 ]
 
 // Ачивки за загруженные фотки
 const UPLOAD_ACHIEVEMENTS = [
-  { count: 1, title: "First Step", icon: Upload, color: "text-gray-500", description: "Uploaded first photo" },
+  { count: 1, title: "StartOrigin was Made for Photos", icon: Upload, color: "text-gray-500", description: "Uploaded first photo" },
   { count: 5, title: "Getting Started", icon: Camera, color: "text-green-500", description: "Uploaded 5 photos" },
-  { count: 10, title: "Photo Enthusiast", icon: Camera, color: "text-green-500", description: "Uploaded 10 photos" },
+  { count: 10, title: "Photo Enthusiast", icon: Camera, color: "text-red-500", description: "Uploaded 10 photos" },
   { count: 15, title: "Shutterbug", icon: Camera, color: "text-emerald-500", description: "Uploaded 15 photos" },
   { count: 20, title: "Getting Serious", icon: Flame, color: "text-orange-500", description: "Uploaded 20 photos" },
   { count: 25, title: "Dedicated", icon: Flame, color: "text-orange-500", description: "Uploaded 25 photos" },
@@ -53,7 +53,7 @@ const UPLOAD_ACHIEVEMENTS = [
   { count: 85, title: "Iconic", icon: Sparkles, color: "text-rose-500", description: "Uploaded 85 photos" },
   { count: 90, title: "Masterpiece Creator", icon: Sparkles, color: "text-rose-500", description: "Uploaded 90 photos" },
   { count: 95, title: "Photography Guru", icon: Trophy, color: "text-purple-500", description: "Uploaded 95 photos" },
-  { count: 100, title: "Photo God", icon: Trophy, color: "text-cyan-500", description: "Uploaded 100 photos" },
+  { count: 100, title: "Keep Going", icon: Trophy, color: "text-black-500", description: "Uploaded 100 photos" },
 ]
 
 type Achievement = {
