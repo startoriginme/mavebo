@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X } from 'lucide-react'
+import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, X } from 'lucide-react'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -25,7 +25,6 @@ export default function SettingsPage() {
   // Modal states
   const [shopModalOpen, setShopModalOpen] = useState(false)
   const [originsModalOpen, setOriginsModalOpen] = useState(false)
-  const [secretModalOpen, setSecretModalOpen] = useState(false)
   
   // Shop modal state
   const [shopDialogStep, setShopDialogStep] = useState(0)
@@ -39,11 +38,6 @@ export default function SettingsPage() {
     "Now go away. The shop will open when you're ready. When you're prepared. Now you actually aren't.",
     "(bye!)"
   ]
-  
-  // Secret quest state
-  const [secretCompleted, setSecretCompleted] = useState(false)
-  const [secretButtonFound, setSecretButtonFound] = useState(false)
-  const [showSecretHint, setShowSecretHint] = useState(false)
   
   // Origins balance
   const [originsBalance, setOriginsBalance] = useState(0)
@@ -65,7 +59,6 @@ export default function SettingsPage() {
       }
       
       await loadOriginsBalance(user.id)
-      await checkSecretAchievement(user.id)
     }
     load()
   }, [])
@@ -90,38 +83,6 @@ export default function SettingsPage() {
     
     const balance = photoCountValue + (swipeCountValue * 0.5)
     setOriginsBalance(balance)
-  }
-
-  async function checkSecretAchievement(userId: string) {
-    const { data } = await supabase
-      .from('achievements')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('achievement_name', 'Secret Agent: 1st Quest')
-      .maybeSingle()
-    
-    if (data) {
-      setSecretCompleted(true)
-    }
-  }
-
-  async function completeSecretQuest() {
-    if (secretCompleted) return
-    
-    const { error } = await supabase
-      .from('achievements')
-      .insert({
-        user_id: userId,
-        achievement_type: 'secret',
-        achievement_name: 'Secret Agent: 1st Quest',
-        achieved_at: new Date().toISOString()
-      })
-    
-    if (!error) {
-      setSecretCompleted(true)
-      setSecretModalOpen(false)
-      alert('🎉 Achievement unlocked: Secret Agent: 1st Quest!')
-    }
   }
 
   function handleAvatarChange(f: File) {
@@ -275,22 +236,10 @@ export default function SettingsPage() {
       {/* My Origins Button */}
       <button
         onClick={() => setOriginsModalOpen(true)}
-        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-4 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
       >
         <Coins className="w-4 h-4" />
         My Origins
-      </button>
-
-      {/* Secret Button */}
-      <button
-        onClick={() => setSecretModalOpen(true)}
-        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-4 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
-      >
-        <Key className="w-4 h-4" />
-        Secret
-        {secretCompleted && (
-          <span className="ml-2 text-xs text-green-500">✓ Completed</span>
-        )}
       </button>
 
       {/* Resources Section */}
@@ -387,73 +336,6 @@ export default function SettingsPage() {
                 <Coins className="w-4 h-4" />
                 Add Origins to Balance (Coming Soon)
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Secret Modal */}
-      {secretModalOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setSecretModalOpen(false)}>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="border-b border-border p-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Key className="w-5 h-5 text-purple-500" />
-                Secret Quest
-              </h2>
-              <button onClick={() => setSecretModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6">
-              {secretCompleted ? (
-                <div className="text-center">
-                  <p className="text-green-500 mb-2">✓ Achievement Unlocked!</p>
-                  <p className="text-sm text-muted-foreground">You've already completed this quest.</p>
-                </div>
-              ) : (
-                <>
-                  <p className="text-sm text-foreground mb-4 text-center">
-                    Find the hidden button to unlock "Secret Agent: 1st Quest" achievement
-                  </p>
-                  
-                  <div className="relative bg-gradient-to-br from-gray-700 to-gray-900 rounded-xl p-8 mb-4 overflow-hidden">
-                    <img 
-                      src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&h=300&fit=crop" 
-                      alt="Mysterious background" 
-                      className="w-full h-40 object-cover rounded-lg opacity-80"
-                    />
-                    
-                    <button
-                      onClick={completeSecretQuest}
-                      className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-purple-500/0 hover:bg-purple-500/80 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100"
-                      onMouseEnter={() => setSecretButtonFound(true)}
-                      onMouseLeave={() => setSecretButtonFound(false)}
-                    >
-                      <Key className="w-4 h-4 text-white" />
-                    </button>
-                    
-                    <button
-                      className="absolute top-3 left-3 w-6 h-6 rounded-full bg-gray-500/50 hover:bg-gray-500/70 transition-all flex items-center justify-center group"
-                      onClick={() => setShowSecretHint(!showSecretHint)}
-                    >
-                      <span className="text-white text-xs font-bold">?</span>
-                    </button>
-                  </div>
-                  
-                  {showSecretHint && (
-                    <p className="text-xs text-muted-foreground text-center mt-2 animate-pulse">
-                      Hint: Look in the bottom right corner... 👀
-                    </p>
-                  )}
-                  
-                  {secretButtonFound && !secretCompleted && (
-                    <p className="text-xs text-green-500 text-center mt-2">
-                      You found it! Click the key button to claim your achievement!
-                    </p>
-                  )}
-                </>
-              )}
             </div>
           </div>
         </div>
