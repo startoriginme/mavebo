@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Photo, BadgeType } from '@/lib/types'
-import { UserPlus, UserCheck, Images, BadgeCheck, Snowflake, Monitor, Star, Settings, Trophy, Flame, Camera, Sparkles, X, Search, Upload, Eye, EyeOff, Edit2, Minus, Plus, Coins, Play, GalleryHorizontalEnd } from 'lucide-react'
+import { UserPlus, UserCheck, Images, BadgeCheck, Snowflake, Monitor, Star, Settings, Trophy, Flame, Camera, Sparkles, X, Search, Upload, Eye, EyeOff, Edit2, Minus, Plus, Coins, Glasses } from 'lucide-react'
 import PhotoViewer from '@/components/photo-viewer'
 import Link from 'next/link'
 
@@ -23,19 +23,19 @@ const BADGE_CONFIG: Record<BadgeType, { icon: React.ElementType; color: string; 
 
 // Ачивки за свайпы
 const SWIPE_ACHIEVEMENTS = [
-  { count: 10, title: "Tinder Mode Exists?", icon: Play, color: "text-black-500", description: "Swiped 10 photos" },
-  { count: 30, title: "Can't Stop Swiping", icon: GalleryHorizontalEnd, color: "text-blue-500", description: "Swiped 30 photos" },
-  { count: 60, title: "Looking for... What?", icon: Star, color: "text-purple-500", description: "Swiped 60 photos" },
-  { count: 120, title: "Swipe. Swipe. Swipe", icon: Flame, color: "text-orange-500", description: "Swiped 120 photos" },
-  { count: 250, title: "Make Tinder Mode Shine", icon: Sparkles, color: "text-yellow-500", description: "Swiped 250 photos" },
-  { count: 500, title: "Stop. It's the Final Trophy", icon: Trophy, color: "text-cyan-500", description: "Swiped 500 photos" },
+  { count: 10, title: "Photo Explorer", icon: Camera, color: "text-green-500", description: "Swiped 10 photos" },
+  { count: 30, title: "Photo Hunter", icon: Search, color: "text-blue-500", description: "Swiped 30 photos" },
+  { count: 60, title: "Photo Master", icon: Star, color: "text-purple-500", description: "Swiped 60 photos" },
+  { count: 120, title: "Photo Legend", icon: Flame, color: "text-orange-500", description: "Swiped 120 photos" },
+  { count: 250, title: "Photo Guru", icon: Sparkles, color: "text-yellow-500", description: "Swiped 250 photos" },
+  { count: 500, title: "Photo God", icon: Trophy, color: "text-cyan-500", description: "Swiped 500 photos" },
 ]
 
 // Ачивки за загруженные фотки
 const UPLOAD_ACHIEVEMENTS = [
-  { count: 1, title: "StartOrigin was Made for Photos", icon: Upload, color: "text-gray-500", description: "Uploaded first photo" },
+  { count: 1, title: "First Step", icon: Upload, color: "text-gray-500", description: "Uploaded first photo" },
   { count: 5, title: "Getting Started", icon: Camera, color: "text-green-500", description: "Uploaded 5 photos" },
-  { count: 10, title: "Photo Enthusiast", icon: Camera, color: "text-red-500", description: "Uploaded 10 photos" },
+  { count: 10, title: "Photo Enthusiast", icon: Camera, color: "text-green-500", description: "Uploaded 10 photos" },
   { count: 15, title: "Shutterbug", icon: Camera, color: "text-emerald-500", description: "Uploaded 15 photos" },
   { count: 20, title: "Getting Serious", icon: Flame, color: "text-orange-500", description: "Uploaded 20 photos" },
   { count: 25, title: "Dedicated", icon: Flame, color: "text-orange-500", description: "Uploaded 25 photos" },
@@ -53,7 +53,12 @@ const UPLOAD_ACHIEVEMENTS = [
   { count: 85, title: "Iconic", icon: Sparkles, color: "text-rose-500", description: "Uploaded 85 photos" },
   { count: 90, title: "Masterpiece Creator", icon: Sparkles, color: "text-rose-500", description: "Uploaded 90 photos" },
   { count: 95, title: "Photography Guru", icon: Trophy, color: "text-purple-500", description: "Uploaded 95 photos" },
-  { count: 100, title: "Keep Going", icon: Trophy, color: "text-black-500", description: "Uploaded 100 photos" },
+  { count: 100, title: "Photo God", icon: Trophy, color: "text-cyan-500", description: "Uploaded 100 photos" },
+]
+
+// Секретные ачивки
+const SECRET_ACHIEVEMENTS = [
+  { title: "Secret Agent: 1st Quest", icon: Glasses, color: "text-purple-500", description: "Completed the first secret quest" },
 ]
 
 type Achievement = {
@@ -100,11 +105,9 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   }, [swipeCount, uploadCount])
 
   async function calculateOriginsBalance() {
-    // Формула: количество фоток (1 за каждую) + (свайпы * 0.5)
     const balance = uploadCount + (swipeCount * 0.5)
     setOriginsBalance(balance)
     
-    // Сохраняем баланс в БД (опционально, если нужно хранить)
     if (isOwn) {
       await supabase
         .from('profiles')
@@ -114,7 +117,6 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   }
 
   async function loadUserStats() {
-    // Загружаем счетчик свайпов
     const { data: profileData } = await supabase
       .from('profiles')
       .select('swipe_count, origins_balance')
@@ -131,7 +133,6 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
       }
     }
     
-    // Загружаем количество фото
     const { count } = await supabase
       .from('photos')
       .select('*', { count: 'exact', head: true })
@@ -141,7 +142,6 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   }
 
   async function loadUserSettings() {
-    // Загружаем настройки скрытия свайпов
     const { data: swipeData } = await supabase
       .from('user_settings')
       .select('hide_swipe_count')
@@ -152,7 +152,6 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
       setHideSwipeCount(swipeData.hide_swipe_count || false)
     }
     
-    // Загружаем скрытые ачивки
     const { data: hiddenData } = await supabase
       .from('user_settings')
       .select('hidden_achievements')
@@ -304,52 +303,42 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   // Добавляем значок snowflake для конкретного пользователя
   let badges: BadgeType[] = profile.badges ?? []
   
-  // Проверяем, является ли пользователь @winterwastaken
   const isWinterWastaken = profile.username === 'winterwastaken' || profile.id === 'c2c721aa-bc04-4c6e-a86b-f3f105bd738f'
   const isViscaelbarca = profile.username === 'viscaelbarca' || profile.id === 'ce0f7b34-b8d7-41b7-8437-dc3fc95399bd'
-const isZaharques = profile.username === 'zaharques' || profile.id === '9e6a9c61-1205-4149-9328-7ea038b10726'
+  const isZaharques = profile.username === 'zaharques' || profile.id === '9e6a9c61-1205-4149-9328-7ea038b10726'
   const isMavebo = profile.username === 'mavebo' || profile.id === 'fb94ce38-cdd4-4968-9e3a-ed49e12693c0'
-    const isCamilakiriek = profile.username === 'camilakiriek' || profile.id === '87fbca9a-f9ea-4f58-b1e5-c6bf6d6cce7e'
-  
-
+  const isCamilakiriek = profile.username === 'camilakiriek' || profile.id === '87fbca9a-f9ea-4f58-b1e5-c6bf6d6cce7e'
   
   if (isWinterWastaken && !badges.includes('snowflake')) {
     badges = [...badges, 'snowflake']
   }
-    if (isCamilakiriek && !badges.includes('star')) {
+  if (isCamilakiriek && !badges.includes('star')) {
     badges = [...badges, 'star']
   }
-
   if (isViscaelbarca && !badges.includes('star')) {
-  badges.push('star')
-}
-
-    if (isMavebo && !badges.includes('verified')) {
-  badges.push('verified')
-}
-
-if (isZaharques && !badges.includes('computer')) {
-  badges.push('computer')
-}
-if (isZaharques && !badges.includes('star')) {
-  badges.push('star')
-}
-
-// Проверяем и добавляем значки для конкретных пользователей
-
-if (isViscaelbarca && !badges.includes('star')) {
-  badges.push('star')
-}
-
-if (isZaharques && !badges.includes('computer')) {
-  badges.push('computer')
-}
+    badges.push('star')
+  }
+  if (isMavebo && !badges.includes('verified')) {
+    badges.push('verified')
+  }
+  if (isZaharques && !badges.includes('computer')) {
+    badges.push('computer')
+  }
+  if (isZaharques && !badges.includes('star')) {
+    badges.push('star')
+  }
   
   // Фильтруем ачивки для отображения (скрытые не показываем другим)
   const visibleAchievements = achievements.filter(ach => !hiddenAchievements.has(ach.id))
   const hiddenAchievementsList = achievements.filter(ach => hiddenAchievements.has(ach.id))
 
   const getAchievementConfig = (achievementName: string) => {
+    // Проверяем секретные ачивки
+    const secretAch = SECRET_ACHIEVEMENTS.find(a => a.title === achievementName)
+    if (secretAch) {
+      return { icon: secretAch.icon, color: secretAch.color, label: secretAch.description }
+    }
+    
     const swipeAch = SWIPE_ACHIEVEMENTS.find(a => a.title === achievementName)
     if (swipeAch) {
       return { icon: swipeAch.icon, color: swipeAch.color, label: swipeAch.description }
@@ -647,4 +636,4 @@ if (isZaharques && !badges.includes('computer')) {
       {viewer && <PhotoViewer photo={viewer} onClose={() => setViewer(null)} />}
     </main>
   )
-}  
+}
