@@ -647,4 +647,4 @@ if (isZaharques && !badges.includes('computer')) {
       {viewer && <PhotoViewer photo={viewer} onClose={() => setViewer(null)} />}
     </main>
   )
-}   сделай чтобы тут появлялась ачивка если квест пройден (secret agent 1st quest) с иконкой очков (sunglasses)
+}  
