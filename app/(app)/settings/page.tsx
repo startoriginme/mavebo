@@ -53,6 +53,7 @@ export default function SettingsPage() {
   // Origins balance
   const [originsBalance, setOriginsBalance] = useState(0)
   const [maxOriginsBalance, setMaxOriginsBalance] = useState(0)
+  const [spentOrigins, setSpentOrigins] = useState(0)
   const [uploadCount, setUploadCount] = useState(0)
   const [swipeCount, setSwipeCount] = useState(0)
   
@@ -120,6 +121,7 @@ export default function SettingsPage() {
         setSelectedTheme(data.theme_preference || 'default')
         setSelectedPattern(data.pattern_preference || 'none')
         setShopUnlocked(data.shop_unlocked || false)
+        setSpentOrigins(data.spent_origins || 0)
       }
       
       await loadOriginsBalance(user.id)
@@ -158,7 +160,7 @@ export default function SettingsPage() {
   async function loadOriginsBalance(userId: string) {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('swipe_count, origins_balance')
+      .select('swipe_count, origins_balance, spent_origins')
       .eq('id', userId)
       .single()
     
@@ -173,13 +175,23 @@ export default function SettingsPage() {
     const photoCountValue = photoCount || 0
     setUploadCount(photoCountValue)
     
-    // Максимальный баланс (без трат)
+    // Максимальный баланс (всего заработано)
     const maxBalance = photoCountValue + (swipeCountValue * 0.5)
     setMaxOriginsBalance(maxBalance)
     
-    // Текущий баланс (с учетом трат)
-    const currentBalance = profileData?.origins_balance !== undefined ? profileData.origins_balance : maxBalance
+    // Потраченные Origins (из БД)
+    const spent = profileData?.spent_origins || 0
+    setSpentOrigins(spent)
+    
+    // Текущий баланс = заработано - потрачено
+    const currentBalance = maxBalance - spent
     setOriginsBalance(currentBalance)
+    
+    // Сохраняем текущий баланс в БД
+    await supabase
+      .from('profiles')
+      .update({ origins_balance: currentBalance })
+      .eq('id', userId)
   }
 
   async function unlockShopPermanently() {
@@ -250,11 +262,16 @@ export default function SettingsPage() {
       return false
     }
 
-    // Deduct Origins
-    const newBalance = originsBalance - price
+    // Обновляем потраченные Origins
+    const newSpent = spentOrigins + price
+    const newBalance = maxOriginsBalance - newSpent
+    
     const { error: balanceError } = await supabase
       .from('profiles')
-      .update({ origins_balance: newBalance })
+      .update({ 
+        spent_origins: newSpent,
+        origins_balance: newBalance
+      })
       .eq('id', userId)
 
     if (balanceError) {
@@ -263,6 +280,7 @@ export default function SettingsPage() {
       return false
     }
 
+    setSpentOrigins(newSpent)
     setOriginsBalance(newBalance)
 
     // Add purchased item
@@ -544,7 +562,7 @@ export default function SettingsPage() {
         Sign Out
       </button>
 
-      {/* Shop Modal - Locked State (only shows once before unlocking) */}
+      {/* Shop Modal - Locked State */}
       {shopModalOpen && !shopUnlocked && originsBalance < 300 && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShopModalOpen(false)}>
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -758,7 +776,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="pt-2 border-t border-border">
                   <p className="text-xl font-semibold text-foreground">{maxOriginsBalance.toFixed(1)}</p>
-                  <p className="text-xs text-muted-foreground">Total Earned (Max Balance)</p>
+                  <p className="text-xs text-muted-foreground">Total Earned</p>
                 </div>
               </div>
               
@@ -772,7 +790,7 @@ export default function SettingsPage() {
                   • {swipeCount} swipes × 0.5 = {(swipeCount * 0.5).toFixed(1)} Origins earned
                 </p>
                 <p className="text-xs text-amber-500 mt-2">
-                  Spent: {(maxOriginsBalance - originsBalance).toFixed(1)} Origins used in Shop
+                  Spent: {spentOrigins.toFixed(1)} / {maxOriginsBalance.toFixed(1)} Origins
                 </p>
               </div>
               
