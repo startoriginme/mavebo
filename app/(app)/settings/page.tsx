@@ -26,10 +26,10 @@ export default function SettingsPage() {
   const [shopModalOpen, setShopModalOpen] = useState(false)
   const [originsModalOpen, setOriginsModalOpen] = useState(false)
   const [secretModalOpen, setSecretModalOpen] = useState(false)
+  const [decorationsModalOpen, setDecorationsModalOpen] = useState(false)
   
   // Shop modal state
   const [shopUnlocked, setShopUnlocked] = useState(false)
-  const [shopError, setShopError] = useState<string | null>(null)
   const [purchasing, setPurchasing] = useState<string | null>(null)
   
   // Shop dialog messages for locked shop
@@ -59,6 +59,29 @@ export default function SettingsPage() {
   const [purchasedBadges, setPurchasedBadges] = useState<string[]>([])
   const [unlockedThemes, setUnlockedThemes] = useState<string[]>(['default', 'pink', 'gray', 'green'])
   const [purchasedAchievements, setPurchasedAchievements] = useState<string[]>([])
+
+  // Decoration state
+  const [selectedTheme, setSelectedTheme] = useState<string>('default')
+  const [selectedPattern, setSelectedPattern] = useState<string>('none')
+
+  // Theme options
+  const themes = [
+    { id: 'default', name: 'Default', bg: 'bg-white dark:bg-gray-900', text: 'text-black dark:text-white', preview: 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900' },
+    { id: 'black', name: 'Black', bg: 'bg-black', text: 'text-white', preview: 'bg-black', disabled: !unlockedThemes.includes('black') },
+    { id: 'pink', name: 'Pink', bg: 'bg-pink-100 dark:bg-pink-900', text: 'text-pink-900 dark:text-pink-100', preview: 'bg-pink-300 dark:bg-pink-700' },
+    { id: 'gray', name: 'Gray', bg: 'bg-gray-300 dark:bg-gray-700', text: 'text-gray-800 dark:text-gray-200', preview: 'bg-gray-400 dark:bg-gray-600' },
+    { id: 'green', name: 'Green', bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-900 dark:text-green-100', preview: 'bg-green-300 dark:bg-green-700' },
+  ]
+
+  // Pattern options
+  const patterns = [
+    { id: 'none', name: 'None', preview: 'bg-transparent' },
+    { id: 'circles', name: 'Circles', preview: 'bg-[radial-gradient(circle_at_center,_#999_1px,_transparent_1px)] bg-[length:20px_20px]' },
+    { id: 'triangles', name: 'Triangles', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%20d%3D%22M10%200L20%2017.32H0L10%200z%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
+    { id: 'squares', name: 'Squares', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
+    { id: 'flowers', name: 'Flowers', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210%22%20r%3D%223%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%223%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2217%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%223%22%20cy%3D%2210%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2210%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
+    { id: 'hearts', name: 'Hearts', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%20d%3D%22M10%2018l-1.5-1.4C4.5%2012.8%202%2010.5%202%207.5%202%205%204%203%206.5%203c1.5%200%202.9.8%203.5%202.1.6-1.3%202-2.1%203.5-2.1C16%203%2018%205%2018%207.5c0%203-2.5%205.3-6.5%209.1L10%2018z%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
+  ]
 
   // Shop items
   const shopItems = {
@@ -93,14 +116,42 @@ export default function SettingsPage() {
         setPurchasedBadges(data.purchased_badges || [])
         setUnlockedThemes(data.unlocked_themes || ['default', 'pink', 'gray', 'green'])
         setPurchasedAchievements(data.purchased_achievements || [])
+        setSelectedTheme(data.theme_preference || 'default')
+        setSelectedPattern(data.pattern_preference || 'none')
       }
       
       await loadOriginsBalance(user.id)
       await checkSecretAchievement(user.id)
-      await checkShopUnlock()
+      await loadDecorations()
     }
     load()
   }, [])
+
+  async function loadDecorations() {
+    const { data } = await supabase
+      .from('profiles')
+      .select('theme_preference, pattern_preference')
+      .eq('id', userId)
+      .single()
+    
+    if (data) {
+      setSelectedTheme(data.theme_preference || 'default')
+      setSelectedPattern(data.pattern_preference || 'none')
+    }
+  }
+
+  async function saveThemeAndPattern(themeId: string, patternId: string) {
+    setSelectedTheme(themeId)
+    setSelectedPattern(patternId)
+    
+    await supabase
+      .from('profiles')
+      .update({
+        theme_preference: themeId,
+        pattern_preference: patternId
+      })
+      .eq('id', userId)
+  }
 
   async function loadOriginsBalance(userId: string) {
     const { data: profileData } = await supabase
@@ -124,14 +175,35 @@ export default function SettingsPage() {
     setOriginsBalance(balance)
   }
 
-  async function checkShopUnlock() {
-    // Shop unlocks at 300 Origins
-    if (originsBalance >= 300) {
-      setShopUnlocked(true)
-      setShopError(null)
-    } else {
-      setShopUnlocked(false)
-      setShopError(`Need ${300 - originsBalance} more Origins to unlock the shop`)
+  async function checkSecretAchievement(userId: string) {
+    const { data } = await supabase
+      .from('achievements')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('achievement_name', 'Secret Agent: 1st Quest')
+      .maybeSingle()
+    
+    if (data) {
+      setSecretCompleted(true)
+    }
+  }
+
+  async function completeSecretQuest() {
+    if (secretCompleted) return
+    
+    const { error } = await supabase
+      .from('achievements')
+      .insert({
+        user_id: userId,
+        achievement_type: 'secret',
+        achievement_name: 'Secret Agent: 1st Quest',
+        achieved_at: new Date().toISOString()
+      })
+    
+    if (!error) {
+      setSecretCompleted(true)
+      setSecretModalOpen(false)
+      alert('🎉 Achievement unlocked: Secret Agent: 1st Quest!')
     }
   }
 
@@ -212,7 +284,6 @@ export default function SettingsPage() {
         .update({ purchased_achievements: newAchievements })
         .eq('id', userId)
       
-      // Also add as real achievement
       let achievementName = ''
       if (itemId === 'shopkeeper') achievementName = "Shopkeepers' Favorite"
       if (itemId === 'buyer') achievementName = 'Buyer'
@@ -231,38 +302,6 @@ export default function SettingsPage() {
     alert('Purchase successful! 🎉')
     setPurchasing(null)
     return true
-  }
-
-  async function checkSecretAchievement(userId: string) {
-    const { data } = await supabase
-      .from('achievements')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('achievement_name', 'Secret Agent: 1st Quest')
-      .maybeSingle()
-    
-    if (data) {
-      setSecretCompleted(true)
-    }
-  }
-
-  async function completeSecretQuest() {
-    if (secretCompleted) return
-    
-    const { error } = await supabase
-      .from('achievements')
-      .insert({
-        user_id: userId,
-        achievement_type: 'secret',
-        achievement_name: 'Secret Agent: 1st Quest',
-        achieved_at: new Date().toISOString()
-      })
-    
-    if (!error) {
-      setSecretCompleted(true)
-      setSecretModalOpen(false)
-      alert('🎉 Achievement unlocked: Secret Agent: 1st Quest!')
-    }
   }
 
   function handleAvatarChange(f: File) {
@@ -313,8 +352,9 @@ export default function SettingsPage() {
   }
 
   function handleShopClick() {
-    if (shopUnlocked) {
-      setShopDialogStep(0)
+    // Проверяем: если баланс >= 300 ИЛИ магазин уже разблокирован
+    if (originsBalance >= 300 || shopUnlocked) {
+      setShopUnlocked(true)
       setShopModalOpen(true)
     } else {
       setShopDialogStep(0)
@@ -409,6 +449,15 @@ export default function SettingsPage() {
         </form>
       </div>
 
+      {/* Decorations Button */}
+      <button
+        onClick={() => setDecorationsModalOpen(true)}
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
+      >
+        <Palette className="w-4 h-4" />
+        Decorations
+      </button>
+
       {/* Shop Button */}
       <button
         onClick={handleShopClick}
@@ -416,10 +465,9 @@ export default function SettingsPage() {
       >
         <ShoppingBag className="w-4 h-4" />
         Shop
-        {!shopUnlocked && (
-          <span className="ml-2 text-xs text-amber-500">🔒 {Math.max(0, 300 - originsBalance)} to unlock</span>
-        )}
-        {shopUnlocked && (
+        {originsBalance < 300 ? (
+          <span className="ml-2 text-xs text-amber-500">🔒 {300 - originsBalance} to unlock</span>
+        ) : (
           <span className="ml-2 text-xs text-green-500">✓ Unlocked</span>
         )}
       </button>
@@ -477,7 +525,7 @@ export default function SettingsPage() {
       </button>
 
       {/* Shop Modal - Locked State */}
-      {shopModalOpen && !shopUnlocked && (
+      {shopModalOpen && originsBalance < 300 && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShopModalOpen(false)}>
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="relative h-48 bg-cover bg-center" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=800&h=400&fit=crop)' }}>
@@ -507,7 +555,7 @@ export default function SettingsPage() {
       )}
 
       {/* Shop Modal - Unlocked State */}
-      {shopModalOpen && shopUnlocked && (
+      {shopModalOpen && originsBalance >= 300 && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShopModalOpen(false)}>
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-border p-4 flex items-center justify-between">
@@ -706,6 +754,78 @@ export default function SettingsPage() {
                 <Coins className="w-4 h-4" />
                 Add Origins to Balance (Coming Soon)
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Decorations Modal */}
+      {decorationsModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setDecorationsModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full shadow-2xl my-8" onClick={(e) => e.stopPropagation()}>
+            <div className="border-b border-border p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Palette className="w-5 h-5 text-purple-500" />
+                Decorations
+              </h2>
+              <button onClick={() => setDecorationsModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              {/* Themes Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-foreground mb-3">Themes</h3>
+                <div className="grid grid-cols-5 gap-2">
+                  {themes.map((theme) => (
+                    <button
+                      key={theme.id}
+                      onClick={() => !theme.disabled && saveThemeAndPattern(theme.id, selectedPattern)}
+                      disabled={theme.disabled}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+                        selectedTheme === theme.id
+                          ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-gray-900'
+                          : 'hover:bg-muted/50'
+                      } ${theme.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <div className={`w-10 h-10 rounded-lg ${theme.preview} border border-border`} />
+                      <span className={`text-xs ${selectedTheme === theme.id ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                        {theme.name}
+                      </span>
+                      {theme.disabled && (
+                        <span className="text-[10px] text-amber-500">🔒</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Patterns Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-foreground mb-3">Patterns</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {patterns.map((pattern) => (
+                    <button
+                      key={pattern.id}
+                      onClick={() => saveThemeAndPattern(selectedTheme, pattern.id)}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+                        selectedPattern === pattern.id
+                          ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-gray-900'
+                          : 'hover:bg-muted/50'
+                      }`}
+                    >
+                      <div className={`w-full h-10 rounded-lg bg-gray-200 dark:bg-gray-700 ${pattern.preview} border border-border`} />
+                      <span className={`text-xs ${selectedPattern === pattern.id ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                        {pattern.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground text-center">
+                Your decorations will appear on your profile page
+              </p>
             </div>
           </div>
         </div>
