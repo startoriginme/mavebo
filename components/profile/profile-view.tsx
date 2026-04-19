@@ -69,6 +69,25 @@ type Achievement = {
   achieved_at: string
 }
 
+// Theme configurations
+const THEMES: Record<string, { bg: string; text: string; cardBg: string; cardText: string; glassBg: string }> = {
+  default: { bg: 'bg-white dark:bg-gray-900', text: 'text-black dark:text-white', cardBg: 'bg-white dark:bg-gray-800', cardText: 'text-black dark:text-white', glassBg: 'bg-white/80 dark:bg-gray-900/80' },
+  black: { bg: 'bg-black', text: 'text-white', cardBg: 'bg-gray-900', cardText: 'text-white', glassBg: 'bg-gray-900/80' },
+  pink: { bg: 'bg-pink-100', text: 'text-pink-900', cardBg: 'bg-pink-200', cardText: 'text-pink-900', glassBg: 'bg-pink-100/80' },
+  gray: { bg: 'bg-gray-300', text: 'text-gray-800', cardBg: 'bg-gray-400', cardText: 'text-gray-900', glassBg: 'bg-gray-300/80' },
+  green: { bg: 'bg-green-100', text: 'text-green-900', cardBg: 'bg-green-200', cardText: 'text-green-900', glassBg: 'bg-green-100/80' },
+}
+
+// Pattern configurations
+const PATTERNS: Record<string, string> = {
+  none: '',
+  circles: 'bg-[radial-gradient(circle_at_center,_#999_1px,_transparent_1px)] bg-[length:20px_20px]',
+  triangles: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%20d%3D%22M10%200L20%2017.32H0L10%200z%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]',
+  squares: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Crect%20width%3D%228%22%20height%3D%228%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]',
+  flowers: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210%22%20r%3D%223%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%223%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2217%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%2F%3E%3Ccircle%20cx%3D%223%22%20cy%3D%2210%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2210%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]',
+  hearts: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%20d%3D%22M10%2018l-1.5-1.4C4.5%2012.8%202%2010.5%202%207.5%202%205%204%203%206.5%203c1.5%200%202.9.8%203.5%202.1.6-1.3%202-2.1%203.5-2.1C16%203%2018%205%2018%207.5c0%203-2.5%205.3-6.5%209.1L10%2018z%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]',
+}
+
 export default function ProfileView({ profile, photos, isOwn, currentUserId }: Props) {
   const supabase = createClient()
   const [following, setFollowing] = useState(profile.is_following ?? false)
@@ -84,12 +103,17 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   const [hiddenAchievements, setHiddenAchievements] = useState<Set<string>>(new Set())
   const [showHiddenAchievements, setShowHiddenAchievements] = useState(false)
   const [originsBalance, setOriginsBalance] = useState(0)
+  
+  // Decoration state
+  const [themePreference, setThemePreference] = useState<string>('default')
+  const [patternPreference, setPatternPreference] = useState<string>('none')
 
   // Загружаем данные пользователя
   useEffect(() => {
     loadUserStats()
     loadAchievements()
     loadUserSettings()
+    loadDecorations()
   }, [profile.id])
 
   // Проверяем и добавляем ачивки за фото
@@ -103,6 +127,27 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   useEffect(() => {
     calculateOriginsBalance()
   }, [swipeCount, uploadCount])
+
+  async function loadDecorations() {
+    const { data } = await supabase
+      .from('profiles')
+      .select('theme_preference, pattern_preference')
+      .eq('id', profile.id)
+      .single()
+    
+    if (data) {
+      setThemePreference(data.theme_preference || 'default')
+      setPatternPreference(data.pattern_preference || 'none')
+    }
+  }
+
+  function getCurrentTheme() {
+    return THEMES[themePreference] || THEMES.default
+  }
+
+  function getCurrentPattern() {
+    return PATTERNS[patternPreference] || ''
+  }
 
   async function calculateOriginsBalance() {
     const balance = uploadCount + (swipeCount * 0.5)
@@ -300,7 +345,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     }
   }
 
-  // Добавляем значок snowflake для конкретного пользователя
+  // Добавляем значок для конкретных пользователей
   let badges: BadgeType[] = profile.badges ?? []
   
   const isWinterWastaken = profile.username === 'winterwastaken' || profile.id === 'c2c721aa-bc04-4c6e-a86b-f3f105bd738f'
@@ -328,12 +373,11 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     badges.push('star')
   }
   
-  // Фильтруем ачивки для отображения (скрытые не показываем другим)
+  // Фильтруем ачивки для отображения
   const visibleAchievements = achievements.filter(ach => !hiddenAchievements.has(ach.id))
   const hiddenAchievementsList = achievements.filter(ach => hiddenAchievements.has(ach.id))
 
   const getAchievementConfig = (achievementName: string) => {
-    // Проверяем секретные ачивки
     const secretAch = SECRET_ACHIEVEMENTS.find(a => a.title === achievementName)
     if (secretAch) {
       return { icon: secretAch.icon, color: secretAch.color, label: secretAch.description }
@@ -350,10 +394,13 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     return null
   }
 
+  const currentTheme = getCurrentTheme()
+  const currentPattern = getCurrentPattern()
+
   return (
-    <main className="px-4 pt-6 pb-4 max-w-xl mx-auto">
+    <main className={`px-4 pt-6 pb-4 max-w-xl mx-auto min-h-screen ${currentTheme.bg} ${currentTheme.text} ${currentPattern}`}>
       {/* Profile header */}
-      <div className="glass rounded-2xl p-5 mb-5 flex flex-col items-center text-center gap-3 relative">
+      <div className={`rounded-2xl p-5 mb-5 flex flex-col items-center text-center gap-3 relative ${currentTheme.cardBg} ${currentTheme.cardText} shadow-lg`}>
         {isOwn && (
           <Link
             href="/settings"
@@ -376,7 +423,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
 
         <div>
           <div className="flex items-center justify-center gap-2 flex-wrap">
-            <h1 className="text-lg font-semibold text-foreground">{profile.name}</h1>
+            <h1 className="text-lg font-semibold">{profile.name}</h1>
             {badges.length > 0 && (
               <div className="flex items-center gap-1">
                 {badges.map((badge) => {
@@ -392,28 +439,28 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
               </div>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">@{profile.username}</p>
-          {profile.bio && <p className="text-sm text-foreground/80 mt-1.5 leading-relaxed">{profile.bio}</p>}
+          <p className="text-sm opacity-80">@{profile.username}</p>
+          {profile.bio && <p className="text-sm opacity-80 mt-1.5 leading-relaxed">{profile.bio}</p>}
         </div>
 
         {/* Stats with links */}
         <div className="flex gap-6 text-center">
           <Link href={isOwn ? '/following?tab=followers' : '#'} className="hover:opacity-80 transition-opacity">
-            <p className="text-lg font-semibold text-foreground">{followersCount}</p>
-            <p className="text-xs text-muted-foreground">Followers</p>
+            <p className="text-lg font-semibold">{followersCount}</p>
+            <p className="text-xs opacity-70">Followers</p>
           </Link>
           <Link href={isOwn ? '/following' : '#'} className="hover:opacity-80 transition-opacity">
-            <p className="text-lg font-semibold text-foreground">{profile.following_count ?? 0}</p>
-            <p className="text-xs text-muted-foreground">Following</p>
+            <p className="text-lg font-semibold">{profile.following_count ?? 0}</p>
+            <p className="text-xs opacity-70">Following</p>
           </Link>
           <div>
-            <p className="text-lg font-semibold text-foreground">{uploadCount}</p>
-            <p className="text-xs text-muted-foreground">Photos</p>
+            <p className="text-lg font-semibold">{uploadCount}</p>
+            <p className="text-xs opacity-70">Photos</p>
           </div>
           <div className="relative">
             <div className="flex items-center justify-center gap-1">
               <Flame className="w-4 h-4 text-orange-500" />
-              <p className="text-lg font-semibold text-foreground">
+              <p className="text-lg font-semibold">
                 {hideSwipeCount && !isOwn ? '???' : swipeCount}
               </p>
               {isOwn && (
@@ -422,18 +469,18 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
                     setTempSwipeValue(swipeCount)
                     setShowSwipeEditor(true)
                   }}
-                  className="p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                  className="p-1 rounded-md opacity-70 hover:opacity-100 transition-colors"
                   title="Edit swipe count"
                 >
                   <Edit2 className="w-3 h-3" />
                 </button>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">Swipes</p>
+            <p className="text-xs opacity-70">Swipes</p>
             {isOwn && (
               <button
                 onClick={toggleHideSwipeCount}
-                className="absolute -right-6 top-0 p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute -right-6 top-0 p-1 rounded-md opacity-70 hover:opacity-100 transition-colors"
                 title={hideSwipeCount ? "Show swipe count to others" : "Hide swipe count from others"}
               >
                 {hideSwipeCount ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
@@ -444,14 +491,14 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
 
         {/* Origins Balance - только для владельца профиля */}
         {isOwn && (
-          <div className="mt-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
+          <div className="mt-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
             <div className="flex items-center justify-center gap-2">
               <Coins className="w-4 h-4 text-amber-500" />
-              <p className="text-sm font-semibold text-foreground">
+              <p className="text-sm font-semibold">
                 {originsBalance.toFixed(1)} Origins
               </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs opacity-70 mt-1">
               {uploadCount} photos + {swipeCount} swipes ×0.5
             </p>
           </div>
@@ -482,8 +529,8 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
 
       {/* Swipe Editor Modal */}
       {showSwipeEditor && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass rounded-2xl p-6 max-w-sm w-full">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
             <h3 className="text-lg font-semibold mb-4">Edit Swipe Count</h3>
             <p className="text-sm text-muted-foreground mb-2">
               Current: {swipeCount} / Max: {originalSwipeCount}
@@ -528,10 +575,10 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
         </div>
       )}
 
-      {/* Visible Achievements Section - видны всем */}
+      {/* Visible Achievements Section */}
       {visibleAchievements.length > 0 && (
-        <div className="glass rounded-2xl p-5 mb-5">
-          <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+        <div className={`rounded-2xl p-5 mb-5 ${currentTheme.cardBg} ${currentTheme.cardText} shadow-md`}>
+          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <Trophy className="w-4 h-4 text-yellow-500" />
             Achievements
           </h2>
@@ -543,11 +590,11 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
               return (
                 <div key={achievement.id} className="relative group">
                   <div 
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border hover:border-primary/50 transition-all"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/10 dark:bg-white/10 border border-border hover:border-primary/50 transition-all"
                     title={achConfig.label}
                   >
                     <Icon className={`w-4 h-4 ${achConfig.color}`} />
-                    <span className="text-xs font-medium text-foreground">{achievement.achievement_name}</span>
+                    <span className="text-xs font-medium">{achievement.achievement_name}</span>
                   </div>
                   {isOwn && (
                     <button
@@ -568,16 +615,16 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
 
       {/* Hidden Achievements Section - видна только владельцу */}
       {isOwn && hiddenAchievementsList.length > 0 && (
-        <div className="glass rounded-2xl p-5 mb-5 opacity-75 hover:opacity-100 transition-opacity">
+        <div className={`rounded-2xl p-5 mb-5 opacity-75 hover:opacity-100 transition-opacity ${currentTheme.cardBg} ${currentTheme.cardText} shadow-md`}>
           <button
             onClick={() => setShowHiddenAchievements(!showHiddenAchievements)}
-            className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-3"
+            className="w-full flex items-center justify-between text-sm font-semibold mb-3"
           >
             <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-muted-foreground" />
+              <Eye className="w-4 h-4 opacity-70" />
               <span>Hidden Achievements ({hiddenAchievementsList.length})</span>
             </div>
-            <span className="text-xs text-muted-foreground">{showHiddenAchievements ? '▼' : '▶'}</span>
+            <span className="text-xs opacity-70">{showHiddenAchievements ? '▼' : '▶'}</span>
           </button>
           
           {showHiddenAchievements && (
@@ -589,11 +636,11 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
                 return (
                   <div key={achievement.id} className="relative group">
                     <div 
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/30 border border-dashed border-border opacity-70"
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/5 border border-dashed border-border opacity-70"
                       title={achConfig.label}
                     >
                       <Icon className={`w-4 h-4 ${achConfig.color} opacity-70`} />
-                      <span className="text-xs font-medium text-muted-foreground">{achievement.achievement_name}</span>
+                      <span className="text-xs font-medium opacity-70">{achievement.achievement_name}</span>
                     </div>
                     <button
                       onClick={() => toggleHideAchievement(achievement.id)}
@@ -614,17 +661,17 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
       {/* Photos grid */}
       {photos.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-          <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-            <Images className="w-6 h-6 text-muted-foreground" />
+          <div className="w-12 h-12 rounded-xl bg-black/10 dark:bg-white/10 flex items-center justify-center">
+            <Images className="w-6 h-6 opacity-50" />
           </div>
-          <p className="text-sm text-muted-foreground">No public photos yet.</p>
+          <p className="text-sm opacity-70">No public photos yet.</p>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-1.5">
           {photos.map((photo) => (
             <div
               key={photo.id}
-              className="aspect-square rounded-xl overflow-hidden bg-muted cursor-pointer"
+              className="aspect-square rounded-xl overflow-hidden bg-black/10 dark:bg-white/10 cursor-pointer"
               onClick={() => setViewer(photo)}
             >
               <img src={photo.url} alt={photo.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
