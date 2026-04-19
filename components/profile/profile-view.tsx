@@ -103,6 +103,8 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   const [hiddenAchievements, setHiddenAchievements] = useState<Set<string>>(new Set())
   const [showHiddenAchievements, setShowHiddenAchievements] = useState(false)
   const [originsBalance, setOriginsBalance] = useState(0)
+  const [maxOriginsBalance, setMaxOriginsBalance] = useState(0)
+  const [spentOrigins, setSpentOrigins] = useState(0)
   
   // Decoration state for profile container only
   const [themePreference, setThemePreference] = useState<string>('default')
@@ -150,13 +152,28 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   }
 
   async function calculateOriginsBalance() {
-    const balance = uploadCount + (swipeCount * 0.5)
-    setOriginsBalance(balance)
+    // Максимальный баланс (всего заработано)
+    const maxBalance = uploadCount + (swipeCount * 0.5)
+    setMaxOriginsBalance(maxBalance)
+    
+    // Получаем потраченные Origins из БД
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('spent_origins, origins_balance')
+      .eq('id', profile.id)
+      .single()
+    
+    const spent = profileData?.spent_origins || 0
+    setSpentOrigins(spent)
+    
+    // Текущий баланс = заработано - потрачено
+    const currentBalance = maxBalance - spent
+    setOriginsBalance(currentBalance)
     
     if (isOwn) {
       await supabase
         .from('profiles')
-        .update({ origins_balance: balance })
+        .update({ origins_balance: currentBalance })
         .eq('id', profile.id)
     }
   }
@@ -164,7 +181,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   async function loadUserStats() {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('swipe_count, origins_balance, purchased_badges')
+      .select('swipe_count, origins_balance, purchased_badges, spent_origins')
       .eq('id', profile.id)
       .single()
     
@@ -175,6 +192,9 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
       setTempSwipeValue(count)
       if (profileData.origins_balance !== undefined) {
         setOriginsBalance(profileData.origins_balance)
+      }
+      if (profileData.spent_origins !== undefined) {
+        setSpentOrigins(profileData.spent_origins)
       }
     }
     
@@ -505,7 +525,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
             </div>
           </div>
 
-          {/* Origins Balance - только для владельца профиля */}
+          {/* Origins Balance - только для владельца профиля - теперь показывает ТЕКУЩИЙ баланс */}
           {isOwn && (
             <div className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 inline-block mx-auto">
               <div className="flex items-center justify-center gap-2">
@@ -515,7 +535,8 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
                 </p>
               </div>
               <p className="text-xs opacity-70 mt-1">
-                {uploadCount} photos + {swipeCount} swipes ×0.5
+                {uploadCount} photos + {swipeCount} swipes ×0.5 = {maxOriginsBalance.toFixed(1)} total
+                {spentOrigins > 0 && ` · ${spentOrigins.toFixed(1)} spent`}
               </p>
             </div>
           )}
