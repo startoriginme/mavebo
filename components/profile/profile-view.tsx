@@ -70,15 +70,15 @@ type Achievement = {
 }
 
 // Theme configurations for the profile container only
-const THEMES: Record<string, { bg: string; text: string; pattern: string }> = {
-  default: { bg: 'bg-white dark:bg-gray-900', text: 'text-black dark:text-white', pattern: '' },
-  black: { bg: 'bg-black', text: 'text-white', pattern: '' },
-  pink: { bg: 'bg-pink-100', text: 'text-pink-900', pattern: '' },
-  gray: { bg: 'bg-gray-300', text: 'text-gray-800', pattern: '' },
-  green: { bg: 'bg-green-100', text: 'text-green-900', pattern: '' },
+const THEMES: Record<string, { bg: string; text: string }> = {
+  default: { bg: 'bg-white dark:bg-gray-900', text: 'text-black dark:text-white' },
+  black: { bg: 'bg-black', text: 'text-white' },
+  pink: { bg: 'bg-pink-100', text: 'text-pink-900' },
+  gray: { bg: 'bg-gray-300', text: 'text-gray-800' },
+  green: { bg: 'bg-green-100', text: 'text-green-900' },
 }
 
-// Pattern configurations (applied on top of theme background)
+// Pattern configurations
 const PATTERNS: Record<string, string> = {
   none: '',
   circles: 'bg-[radial-gradient(circle_at_center,_#999_1px,_transparent_1px)] bg-[length:20px_20px]',
@@ -399,8 +399,8 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
 
   return (
     <main className="px-4 pt-6 pb-4 max-w-xl mx-auto">
-      {/* Profile header - ТОЛЬКО ЭТОТ КОНТЕЙНЕР меняет фон и паттерн */}
-      <div className={`rounded-2xl p-5 mb-5 flex flex-col items-center text-center gap-3 relative shadow-lg transition-all duration-300 ${currentTheme.bg} ${currentTheme.text}`} style={{ backgroundImage: currentPattern ? undefined : undefined, backgroundBlend: currentPattern ? 'overlay' : undefined }}>
+      {/* Profile header - ONLY THIS CONTAINER changes background and pattern */}
+      <div className={`rounded-2xl p-5 mb-5 flex flex-col items-center text-center gap-3 relative shadow-lg transition-all duration-300 ${currentTheme.bg} ${currentTheme.text}`}>
         
         {/* Apply pattern as background overlay if selected */}
         {currentPattern && (
@@ -498,7 +498,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
 
           {/* Origins Balance - только для владельца профиля */}
           {isOwn && (
-            <div className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
+            <div className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 inline-block mx-auto">
               <div className="flex items-center justify-center gap-2">
                 <Coins className="w-4 h-4 text-amber-500" />
                 <p className="text-sm font-semibold">
@@ -511,27 +511,30 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
             </div>
           )}
 
-          {isOwn ? (
-            <Link
-              href="/settings"
-              className="mt-3 px-6 py-2 rounded-xl bg-secondary text-secondary-foreground text-sm font-medium hover:bg-accent transition-colors inline-flex items-center gap-2"
-            >
-              <Settings className="w-4 h-4" />
-              Edit Profile
-            </Link>
-          ) : (
-            <button
-              onClick={toggleFollow}
-              className={`mt-3 flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-medium transition-all ${
-                following
-                  ? 'bg-secondary text-secondary-foreground hover:bg-accent'
-                  : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shadow-primary/20'
-              }`}
-            >
-              {following ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-              {following ? 'Following' : 'Follow'}
-            </button>
-          )}
+          {/* Buttons container - центрируем кнопки */}
+          <div className="mt-4 flex justify-center">
+            {isOwn ? (
+              <Link
+                href="/settings"
+                className="px-6 py-2 rounded-xl bg-secondary text-secondary-foreground text-sm font-medium hover:bg-accent transition-colors inline-flex items-center gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                Edit Profile
+              </Link>
+            ) : (
+              <button
+                onClick={toggleFollow}
+                className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-medium transition-all ${
+                  following
+                    ? 'bg-secondary text-secondary-foreground hover:bg-accent'
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shadow-primary/20'
+                }`}
+              >
+                {following ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                {following ? 'Following' : 'Follow'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
