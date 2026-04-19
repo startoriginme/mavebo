@@ -32,7 +32,7 @@ export default function SettingsPage() {
   const [shopUnlocked, setShopUnlocked] = useState(false)
   const [purchasing, setPurchasing] = useState<string | null>(null)
   
-  // Shop dialog messages for locked shop
+  // Shop dialog messages for locked shop (only shows once)
   const [shopDialogStep, setShopDialogStep] = useState(0)
   const shopDialogMessages = [
     "No entry.",
@@ -52,6 +52,7 @@ export default function SettingsPage() {
   
   // Origins balance
   const [originsBalance, setOriginsBalance] = useState(0)
+  const [maxOriginsBalance, setMaxOriginsBalance] = useState(0)
   const [uploadCount, setUploadCount] = useState(0)
   const [swipeCount, setSwipeCount] = useState(0)
   
@@ -118,6 +119,7 @@ export default function SettingsPage() {
         setPurchasedAchievements(data.purchased_achievements || [])
         setSelectedTheme(data.theme_preference || 'default')
         setSelectedPattern(data.pattern_preference || 'none')
+        setShopUnlocked(data.shop_unlocked || false)
       }
       
       await loadOriginsBalance(user.id)
@@ -171,8 +173,24 @@ export default function SettingsPage() {
     const photoCountValue = photoCount || 0
     setUploadCount(photoCountValue)
     
-    const balance = photoCountValue + (swipeCountValue * 0.5)
-    setOriginsBalance(balance)
+    // Максимальный баланс (без трат)
+    const maxBalance = photoCountValue + (swipeCountValue * 0.5)
+    setMaxOriginsBalance(maxBalance)
+    
+    // Текущий баланс (с учетом трат)
+    const currentBalance = profileData?.origins_balance !== undefined ? profileData.origins_balance : maxBalance
+    setOriginsBalance(currentBalance)
+  }
+
+  async function unlockShopPermanently() {
+    if (shopUnlocked) return
+    
+    await supabase
+      .from('profiles')
+      .update({ shop_unlocked: true })
+      .eq('id', userId)
+    
+    setShopUnlocked(true)
   }
 
   async function checkSecretAchievement(userId: string) {
@@ -209,7 +227,7 @@ export default function SettingsPage() {
 
   async function purchaseItem(type: string, itemId: string, price: number) {
     if (originsBalance < price) {
-      alert(`Not enough Origins! You need ${price - originsBalance} more.`)
+      alert(`Not enough Origins! You need ${(price - originsBalance).toFixed(1)} more.`)
       return false
     }
 
@@ -352,9 +370,11 @@ export default function SettingsPage() {
   }
 
   function handleShopClick() {
-    // Проверяем: если баланс >= 300 ИЛИ магазин уже разблокирован
-    if (originsBalance >= 300 || shopUnlocked) {
-      setShopUnlocked(true)
+    if (shopUnlocked) {
+      setShopModalOpen(true)
+    } else if (originsBalance >= 300) {
+      // Первое открытие - разблокируем магазин навсегда
+      unlockShopPermanently()
       setShopModalOpen(true)
     } else {
       setShopDialogStep(0)
@@ -465,8 +485,8 @@ export default function SettingsPage() {
       >
         <ShoppingBag className="w-4 h-4" />
         Shop
-        {originsBalance < 300 ? (
-          <span className="ml-2 text-xs text-amber-500">🔒 {300 - originsBalance} to unlock</span>
+        {!shopUnlocked && originsBalance < 300 ? (
+          <span className="ml-2 text-xs text-amber-500">🔒 {Math.ceil(300 - originsBalance)} to unlock</span>
         ) : (
           <span className="ml-2 text-xs text-green-500">✓ Unlocked</span>
         )}
@@ -524,8 +544,8 @@ export default function SettingsPage() {
         Sign Out
       </button>
 
-      {/* Shop Modal - Locked State */}
-      {shopModalOpen && originsBalance < 300 && (
+      {/* Shop Modal - Locked State (only shows once before unlocking) */}
+      {shopModalOpen && !shopUnlocked && originsBalance < 300 && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShopModalOpen(false)}>
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="relative h-48 bg-cover bg-center" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=800&h=400&fit=crop)' }}>
@@ -541,7 +561,7 @@ export default function SettingsPage() {
                 {shopDialogMessages[shopDialogStep]}
               </p>
               <p className="text-sm text-muted-foreground mb-4">
-                You need {300 - originsBalance} more Origins to unlock the shop!
+                You need {Math.ceil(300 - originsBalance)} more Origins to unlock the shop!
               </p>
               <button
                 onClick={handleShopNext}
@@ -555,7 +575,7 @@ export default function SettingsPage() {
       )}
 
       {/* Shop Modal - Unlocked State */}
-      {shopModalOpen && originsBalance >= 300 && (
+      {(shopModalOpen && (shopUnlocked || originsBalance >= 300)) && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShopModalOpen(false)}>
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-border p-4 flex items-center justify-between">
@@ -731,19 +751,28 @@ export default function SettingsPage() {
               </button>
             </div>
             <div className="p-6">
-              <div className="text-center mb-6">
-                <p className="text-4xl font-bold text-amber-500">{originsBalance.toFixed(1)}</p>
-                <p className="text-xs text-muted-foreground mt-1">Origins</p>
+              <div className="text-center mb-6 space-y-2">
+                <div>
+                  <p className="text-3xl font-bold text-amber-500">{originsBalance.toFixed(1)}</p>
+                  <p className="text-xs text-muted-foreground">Current Balance</p>
+                </div>
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xl font-semibold text-foreground">{maxOriginsBalance.toFixed(1)}</p>
+                  <p className="text-xs text-muted-foreground">Total Earned (Max Balance)</p>
+                </div>
               </div>
               
               <div className="bg-muted/30 rounded-xl p-4 mb-6">
-                <p className="text-sm text-foreground mb-2">📸 Rules:</p>
+                <p className="text-sm text-foreground mb-2">📸 How Origins work:</p>
                 <p className="text-xs text-muted-foreground">
-                  The more swipes and photos, the more Origins.
+                  You earn Origins from activity, then spend them in the Shop!
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  • {uploadCount} photos × 1 = {uploadCount} Origins<br />
-                  • {swipeCount} swipes × 0.5 = {(swipeCount * 0.5).toFixed(1)} Origins
+                  • {uploadCount} photos × 1 = {uploadCount} Origins earned<br />
+                  • {swipeCount} swipes × 0.5 = {(swipeCount * 0.5).toFixed(1)} Origins earned
+                </p>
+                <p className="text-xs text-amber-500 mt-2">
+                  Spent: {(maxOriginsBalance - originsBalance).toFixed(1)} Origins used in Shop
                 </p>
               </div>
               
