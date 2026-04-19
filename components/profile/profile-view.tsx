@@ -69,16 +69,16 @@ type Achievement = {
   achieved_at: string
 }
 
-// Theme configurations
-const THEMES: Record<string, { bg: string; text: string; cardBg: string; cardText: string; glassBg: string }> = {
-  default: { bg: 'bg-white dark:bg-gray-900', text: 'text-black dark:text-white', cardBg: 'bg-white dark:bg-gray-800', cardText: 'text-black dark:text-white', glassBg: 'bg-white/80 dark:bg-gray-900/80' },
-  black: { bg: 'bg-black', text: 'text-white', cardBg: 'bg-gray-900', cardText: 'text-white', glassBg: 'bg-gray-900/80' },
-  pink: { bg: 'bg-pink-100', text: 'text-pink-900', cardBg: 'bg-pink-200', cardText: 'text-pink-900', glassBg: 'bg-pink-100/80' },
-  gray: { bg: 'bg-gray-300', text: 'text-gray-800', cardBg: 'bg-gray-400', cardText: 'text-gray-900', glassBg: 'bg-gray-300/80' },
-  green: { bg: 'bg-green-100', text: 'text-green-900', cardBg: 'bg-green-200', cardText: 'text-green-900', glassBg: 'bg-green-100/80' },
+// Theme configurations for the profile container only
+const THEMES: Record<string, { bg: string; text: string; pattern: string }> = {
+  default: { bg: 'bg-white dark:bg-gray-900', text: 'text-black dark:text-white', pattern: '' },
+  black: { bg: 'bg-black', text: 'text-white', pattern: '' },
+  pink: { bg: 'bg-pink-100', text: 'text-pink-900', pattern: '' },
+  gray: { bg: 'bg-gray-300', text: 'text-gray-800', pattern: '' },
+  green: { bg: 'bg-green-100', text: 'text-green-900', pattern: '' },
 }
 
-// Pattern configurations
+// Pattern configurations (applied on top of theme background)
 const PATTERNS: Record<string, string> = {
   none: '',
   circles: 'bg-[radial-gradient(circle_at_center,_#999_1px,_transparent_1px)] bg-[length:20px_20px]',
@@ -104,7 +104,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   const [showHiddenAchievements, setShowHiddenAchievements] = useState(false)
   const [originsBalance, setOriginsBalance] = useState(0)
   
-  // Decoration state
+  // Decoration state for profile container only
   const [themePreference, setThemePreference] = useState<string>('default')
   const [patternPreference, setPatternPreference] = useState<string>('none')
 
@@ -398,133 +398,141 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   const currentPattern = getCurrentPattern()
 
   return (
-    <main className={`px-4 pt-6 pb-4 max-w-xl mx-auto min-h-screen ${currentTheme.bg} ${currentTheme.text} ${currentPattern}`}>
-      {/* Profile header */}
-      <div className={`rounded-2xl p-5 mb-5 flex flex-col items-center text-center gap-3 relative ${currentTheme.cardBg} ${currentTheme.cardText} shadow-lg`}>
-        {isOwn && (
-          <Link
-            href="/settings"
-            className="absolute top-4 right-4 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
-            aria-label="Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </Link>
+    <main className="px-4 pt-6 pb-4 max-w-xl mx-auto">
+      {/* Profile header - ТОЛЬКО ЭТОТ КОНТЕЙНЕР меняет фон и паттерн */}
+      <div className={`rounded-2xl p-5 mb-5 flex flex-col items-center text-center gap-3 relative shadow-lg transition-all duration-300 ${currentTheme.bg} ${currentTheme.text}`} style={{ backgroundImage: currentPattern ? undefined : undefined, backgroundBlend: currentPattern ? 'overlay' : undefined }}>
+        
+        {/* Apply pattern as background overlay if selected */}
+        {currentPattern && (
+          <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ backgroundImage: currentPattern, backgroundRepeat: 'repeat', opacity: 0.4 }} />
         )}
         
-        <div className="w-20 h-20 rounded-full overflow-hidden bg-muted">
-          {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-primary/20 flex items-center justify-center text-2xl font-bold text-primary">
-              {profile.name?.[0] ?? '?'}
-            </div>
+        <div className="relative z-10 w-full">
+          {isOwn && (
+            <Link
+              href="/settings"
+              className="absolute top-0 right-0 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+              aria-label="Settings"
+            >
+              <Settings className="w-5 h-5" />
+            </Link>
           )}
-        </div>
-
-        <div>
-          <div className="flex items-center justify-center gap-2 flex-wrap">
-            <h1 className="text-lg font-semibold">{profile.name}</h1>
-            {badges.length > 0 && (
-              <div className="flex items-center gap-1">
-                {badges.map((badge) => {
-                  const cfg = BADGE_CONFIG[badge]
-                  if (!cfg) return null
-                  const Icon = cfg.icon
-                  return (
-                    <span key={badge} title={cfg.label} aria-label={cfg.label}>
-                      <Icon className={`w-4 h-4 ${cfg.color}`} />
-                    </span>
-                  )
-                })}
+          
+          <div className="w-20 h-20 rounded-full overflow-hidden bg-muted mx-auto">
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-primary/20 flex items-center justify-center text-2xl font-bold text-primary">
+                {profile.name?.[0] ?? '?'}
               </div>
             )}
           </div>
-          <p className="text-sm opacity-80">@{profile.username}</p>
-          {profile.bio && <p className="text-sm opacity-80 mt-1.5 leading-relaxed">{profile.bio}</p>}
-        </div>
 
-        {/* Stats with links */}
-        <div className="flex gap-6 text-center">
-          <Link href={isOwn ? '/following?tab=followers' : '#'} className="hover:opacity-80 transition-opacity">
-            <p className="text-lg font-semibold">{followersCount}</p>
-            <p className="text-xs opacity-70">Followers</p>
-          </Link>
-          <Link href={isOwn ? '/following' : '#'} className="hover:opacity-80 transition-opacity">
-            <p className="text-lg font-semibold">{profile.following_count ?? 0}</p>
-            <p className="text-xs opacity-70">Following</p>
-          </Link>
-          <div>
-            <p className="text-lg font-semibold">{uploadCount}</p>
-            <p className="text-xs opacity-70">Photos</p>
+          <div className="mt-3">
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <h1 className="text-lg font-semibold">{profile.name}</h1>
+              {badges.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {badges.map((badge) => {
+                    const cfg = BADGE_CONFIG[badge]
+                    if (!cfg) return null
+                    const Icon = cfg.icon
+                    return (
+                      <span key={badge} title={cfg.label} aria-label={cfg.label}>
+                        <Icon className={`w-4 h-4 ${cfg.color}`} />
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            <p className="text-sm opacity-80">@{profile.username}</p>
+            {profile.bio && <p className="text-sm opacity-80 mt-1.5 leading-relaxed">{profile.bio}</p>}
           </div>
-          <div className="relative">
-            <div className="flex items-center justify-center gap-1">
-              <Flame className="w-4 h-4 text-orange-500" />
-              <p className="text-lg font-semibold">
-                {hideSwipeCount && !isOwn ? '???' : swipeCount}
-              </p>
+
+          {/* Stats with links */}
+          <div className="flex gap-6 text-center justify-center mt-3">
+            <Link href={isOwn ? '/following?tab=followers' : '#'} className="hover:opacity-80 transition-opacity">
+              <p className="text-lg font-semibold">{followersCount}</p>
+              <p className="text-xs opacity-70">Followers</p>
+            </Link>
+            <Link href={isOwn ? '/following' : '#'} className="hover:opacity-80 transition-opacity">
+              <p className="text-lg font-semibold">{profile.following_count ?? 0}</p>
+              <p className="text-xs opacity-70">Following</p>
+            </Link>
+            <div>
+              <p className="text-lg font-semibold">{uploadCount}</p>
+              <p className="text-xs opacity-70">Photos</p>
+            </div>
+            <div className="relative">
+              <div className="flex items-center justify-center gap-1">
+                <Flame className="w-4 h-4 text-orange-500" />
+                <p className="text-lg font-semibold">
+                  {hideSwipeCount && !isOwn ? '???' : swipeCount}
+                </p>
+                {isOwn && (
+                  <button
+                    onClick={() => {
+                      setTempSwipeValue(swipeCount)
+                      setShowSwipeEditor(true)
+                    }}
+                    className="p-1 rounded-md opacity-70 hover:opacity-100 transition-colors"
+                    title="Edit swipe count"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              <p className="text-xs opacity-70">Swipes</p>
               {isOwn && (
                 <button
-                  onClick={() => {
-                    setTempSwipeValue(swipeCount)
-                    setShowSwipeEditor(true)
-                  }}
-                  className="p-1 rounded-md opacity-70 hover:opacity-100 transition-colors"
-                  title="Edit swipe count"
+                  onClick={toggleHideSwipeCount}
+                  className="absolute -right-6 top-0 p-1 rounded-md opacity-70 hover:opacity-100 transition-colors"
+                  title={hideSwipeCount ? "Show swipe count to others" : "Hide swipe count from others"}
                 >
-                  <Edit2 className="w-3 h-3" />
+                  {hideSwipeCount ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                 </button>
               )}
             </div>
-            <p className="text-xs opacity-70">Swipes</p>
-            {isOwn && (
-              <button
-                onClick={toggleHideSwipeCount}
-                className="absolute -right-6 top-0 p-1 rounded-md opacity-70 hover:opacity-100 transition-colors"
-                title={hideSwipeCount ? "Show swipe count to others" : "Hide swipe count from others"}
-              >
-                {hideSwipeCount ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-              </button>
-            )}
           </div>
-        </div>
 
-        {/* Origins Balance - только для владельца профиля */}
-        {isOwn && (
-          <div className="mt-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
-            <div className="flex items-center justify-center gap-2">
-              <Coins className="w-4 h-4 text-amber-500" />
-              <p className="text-sm font-semibold">
-                {originsBalance.toFixed(1)} Origins
+          {/* Origins Balance - только для владельца профиля */}
+          {isOwn && (
+            <div className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
+              <div className="flex items-center justify-center gap-2">
+                <Coins className="w-4 h-4 text-amber-500" />
+                <p className="text-sm font-semibold">
+                  {originsBalance.toFixed(1)} Origins
+                </p>
+              </div>
+              <p className="text-xs opacity-70 mt-1">
+                {uploadCount} photos + {swipeCount} swipes ×0.5
               </p>
             </div>
-            <p className="text-xs opacity-70 mt-1">
-              {uploadCount} photos + {swipeCount} swipes ×0.5
-            </p>
-          </div>
-        )}
+          )}
 
-        {isOwn ? (
-          <Link
-            href="/settings"
-            className="px-6 py-2 rounded-xl bg-secondary text-secondary-foreground text-sm font-medium hover:bg-accent transition-colors inline-flex items-center gap-2"
-          >
-            <Settings className="w-4 h-4" />
-            Edit Profile
-          </Link>
-        ) : (
-          <button
-            onClick={toggleFollow}
-            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-medium transition-all ${
-              following
-                ? 'bg-secondary text-secondary-foreground hover:bg-accent'
-                : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shadow-primary/20'
-            }`}
-          >
-            {following ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-            {following ? 'Following' : 'Follow'}
-          </button>
-        )}
+          {isOwn ? (
+            <Link
+              href="/settings"
+              className="mt-3 px-6 py-2 rounded-xl bg-secondary text-secondary-foreground text-sm font-medium hover:bg-accent transition-colors inline-flex items-center gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              Edit Profile
+            </Link>
+          ) : (
+            <button
+              onClick={toggleFollow}
+              className={`mt-3 flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-medium transition-all ${
+                following
+                  ? 'bg-secondary text-secondary-foreground hover:bg-accent'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shadow-primary/20'
+              }`}
+            >
+              {following ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+              {following ? 'Following' : 'Follow'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Swipe Editor Modal */}
@@ -577,8 +585,8 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
 
       {/* Visible Achievements Section */}
       {visibleAchievements.length > 0 && (
-        <div className={`rounded-2xl p-5 mb-5 ${currentTheme.cardBg} ${currentTheme.cardText} shadow-md`}>
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+        <div className="glass rounded-2xl p-5 mb-5">
+          <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <Trophy className="w-4 h-4 text-yellow-500" />
             Achievements
           </h2>
@@ -590,11 +598,11 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
               return (
                 <div key={achievement.id} className="relative group">
                   <div 
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/10 dark:bg-white/10 border border-border hover:border-primary/50 transition-all"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border hover:border-primary/50 transition-all"
                     title={achConfig.label}
                   >
                     <Icon className={`w-4 h-4 ${achConfig.color}`} />
-                    <span className="text-xs font-medium">{achievement.achievement_name}</span>
+                    <span className="text-xs font-medium text-foreground">{achievement.achievement_name}</span>
                   </div>
                   {isOwn && (
                     <button
@@ -615,16 +623,16 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
 
       {/* Hidden Achievements Section - видна только владельцу */}
       {isOwn && hiddenAchievementsList.length > 0 && (
-        <div className={`rounded-2xl p-5 mb-5 opacity-75 hover:opacity-100 transition-opacity ${currentTheme.cardBg} ${currentTheme.cardText} shadow-md`}>
+        <div className="glass rounded-2xl p-5 mb-5 opacity-75 hover:opacity-100 transition-opacity">
           <button
             onClick={() => setShowHiddenAchievements(!showHiddenAchievements)}
-            className="w-full flex items-center justify-between text-sm font-semibold mb-3"
+            className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-3"
           >
             <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 opacity-70" />
+              <Eye className="w-4 h-4 text-muted-foreground" />
               <span>Hidden Achievements ({hiddenAchievementsList.length})</span>
             </div>
-            <span className="text-xs opacity-70">{showHiddenAchievements ? '▼' : '▶'}</span>
+            <span className="text-xs text-muted-foreground">{showHiddenAchievements ? '▼' : '▶'}</span>
           </button>
           
           {showHiddenAchievements && (
@@ -636,11 +644,11 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
                 return (
                   <div key={achievement.id} className="relative group">
                     <div 
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/5 border border-dashed border-border opacity-70"
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/30 border border-dashed border-border opacity-70"
                       title={achConfig.label}
                     >
                       <Icon className={`w-4 h-4 ${achConfig.color} opacity-70`} />
-                      <span className="text-xs font-medium opacity-70">{achievement.achievement_name}</span>
+                      <span className="text-xs font-medium text-muted-foreground">{achievement.achievement_name}</span>
                     </div>
                     <button
                       onClick={() => toggleHideAchievement(achievement.id)}
@@ -661,17 +669,17 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
       {/* Photos grid */}
       {photos.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-          <div className="w-12 h-12 rounded-xl bg-black/10 dark:bg-white/10 flex items-center justify-center">
-            <Images className="w-6 h-6 opacity-50" />
+          <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+            <Images className="w-6 h-6 text-muted-foreground" />
           </div>
-          <p className="text-sm opacity-70">No public photos yet.</p>
+          <p className="text-sm text-muted-foreground">No public photos yet.</p>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-1.5">
           {photos.map((photo) => (
             <div
               key={photo.id}
-              className="aspect-square rounded-xl overflow-hidden bg-black/10 dark:bg-white/10 cursor-pointer"
+              className="aspect-square rounded-xl overflow-hidden bg-muted cursor-pointer"
               onClick={() => setViewer(photo)}
             >
               <img src={photo.url} alt={photo.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
