@@ -106,6 +106,10 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   const [maxOriginsBalance, setMaxOriginsBalance] = useState(0)
   const [spentOrigins, setSpentOrigins] = useState(0)
   
+  // Badge settings
+  const [hiddenBadges, setHiddenBadges] = useState<string[]>([])
+  const [badgesOrder, setBadgesOrder] = useState<string[]>(['star', 'computer', 'snowflake', 'verified'])
+  
   // Decoration state for profile container only
   const [themePreference, setThemePreference] = useState<string>('default')
   const [patternPreference, setPatternPreference] = useState<string>('none')
@@ -116,6 +120,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     loadAchievements()
     loadUserSettings()
     loadDecorations()
+    loadBadgeSettings()
   }, [profile.id])
 
   // Проверяем и добавляем ачивки за фото
@@ -129,6 +134,19 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   useEffect(() => {
     calculateOriginsBalance()
   }, [swipeCount, uploadCount])
+
+  async function loadBadgeSettings() {
+    const { data } = await supabase
+      .from('profiles')
+      .select('hidden_badges, badges_order')
+      .eq('id', profile.id)
+      .single()
+    
+    if (data) {
+      setHiddenBadges(data.hidden_badges || [])
+      setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified'])
+    }
+  }
 
   async function loadDecorations() {
     const { data } = await supabase
@@ -152,11 +170,9 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   }
 
   async function calculateOriginsBalance() {
-    // Максимальный баланс (всего заработано)
     const maxBalance = uploadCount + (swipeCount * 0.5)
     setMaxOriginsBalance(maxBalance)
     
-    // Получаем потраченные Origins из БД
     const { data: profileData } = await supabase
       .from('profiles')
       .select('spent_origins, origins_balance')
@@ -166,7 +182,6 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     const spent = profileData?.spent_origins || 0
     setSpentOrigins(spent)
     
-    // Текущий баланс = заработано - потрачено
     const currentBalance = maxBalance - spent
     setOriginsBalance(currentBalance)
     
@@ -365,42 +380,48 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     }
   }
 
-  // Собираем все значки: из БД + купленные в магазине + специальные для пользователей
-  let badges: BadgeType[] = profile.badges ?? []
+  // Собираем все значки с учетом скрытых и порядка
+  // Сначала получаем все доступные значки (купленные + специальные)
+  let allAvailableBadges: BadgeType[] = []
   
   // Добавляем купленные значки из магазина
   const purchasedBadges = profile.purchased_badges || []
   for (const badge of purchasedBadges) {
-    if (!badges.includes(badge as BadgeType)) {
-      badges.push(badge as BadgeType)
+    if (!allAvailableBadges.includes(badge as BadgeType)) {
+      allAvailableBadges.push(badge as BadgeType)
     }
   }
   
-  // Специальные значки для конкретных пользователей
+  // Добавляем специальные значки для конкретных пользователей
   const isWinterWastaken = profile.username === 'winterwastaken' || profile.id === 'c2c721aa-bc04-4c6e-a86b-f3f105bd738f'
   const isViscaelbarca = profile.username === 'viscaelbarca' || profile.id === 'ce0f7b34-b8d7-41b7-8437-dc3fc95399bd'
   const isZaharques = profile.username === 'zaharques' || profile.id === '9e6a9c61-1205-4149-9328-7ea038b10726'
   const isMavebo = profile.username === 'mavebo' || profile.id === 'fb94ce38-cdd4-4968-9e3a-ed49e12693c0'
   const isCamilakiriek = profile.username === 'camilakiriek' || profile.id === '87fbca9a-f9ea-4f58-b1e5-c6bf6d6cce7e'
   
-  if (isWinterWastaken && !badges.includes('snowflake')) {
-    badges = [...badges, 'snowflake']
+  if (isWinterWastaken && !allAvailableBadges.includes('snowflake')) {
+    allAvailableBadges.push('snowflake')
   }
-  if (isCamilakiriek && !badges.includes('star')) {
-    badges = [...badges, 'star']
+  if (isCamilakiriek && !allAvailableBadges.includes('star')) {
+    allAvailableBadges.push('star')
   }
-  if (isViscaelbarca && !badges.includes('star')) {
-    badges.push('star')
+  if (isViscaelbarca && !allAvailableBadges.includes('star')) {
+    allAvailableBadges.push('star')
   }
-  if (isMavebo && !badges.includes('verified')) {
-    badges.push('verified')
+  if (isMavebo && !allAvailableBadges.includes('verified')) {
+    allAvailableBadges.push('verified')
   }
-  if (isZaharques && !badges.includes('computer')) {
-    badges.push('computer')
+  if (isZaharques && !allAvailableBadges.includes('computer')) {
+    allAvailableBadges.push('computer')
   }
-  if (isZaharques && !badges.includes('star')) {
-    badges.push('star')
+  if (isZaharques && !allAvailableBadges.includes('star')) {
+    allAvailableBadges.push('star')
   }
+  
+  // Фильтруем скрытые значки и сортируем по порядку
+  const visibleBadges = badgesOrder.filter(badgeId => 
+    allAvailableBadges.includes(badgeId as BadgeType) && !hiddenBadges.includes(badgeId)
+  )
   
   // Фильтруем ачивки для отображения
   const visibleAchievements = achievements.filter(ach => !hiddenAchievements.has(ach.id))
@@ -460,14 +481,14 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
           <div className="mt-3">
             <div className="flex items-center justify-center gap-2 flex-wrap">
               <h1 className="text-lg font-semibold">{profile.name}</h1>
-              {badges.length > 0 && (
+              {visibleBadges.length > 0 && (
                 <div className="flex items-center gap-1">
-                  {badges.map((badge) => {
-                    const cfg = BADGE_CONFIG[badge]
+                  {visibleBadges.map((badgeId) => {
+                    const cfg = BADGE_CONFIG[badgeId as BadgeType]
                     if (!cfg) return null
                     const Icon = cfg.icon
                     return (
-                      <span key={badge} title={cfg.label} aria-label={cfg.label}>
+                      <span key={badgeId} title={cfg.label} aria-label={cfg.label}>
                         <Icon className={`w-4 h-4 ${cfg.color}`} />
                       </span>
                     )
@@ -525,7 +546,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
             </div>
           </div>
 
-          {/* Origins Balance - только для владельца профиля - теперь показывает ТЕКУЩИЙ баланс */}
+          {/* Origins Balance - только для владельца профиля */}
           {isOwn && (
             <div className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 inline-block mx-auto">
               <div className="flex items-center justify-center gap-2">
