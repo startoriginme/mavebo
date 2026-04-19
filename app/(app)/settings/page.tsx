@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X, Star, Computer, Snowflake, BadgeCheck, Palette, Trophy, ShoppingCart, Zap } from 'lucide-react'
+import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X, Star, Computer, Snowflake, BadgeCheck, Palette, Trophy, ShoppingCart, Zap, GripVertical, Eye, EyeOff } from 'lucide-react'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -27,6 +27,7 @@ export default function SettingsPage() {
   const [originsModalOpen, setOriginsModalOpen] = useState(false)
   const [secretModalOpen, setSecretModalOpen] = useState(false)
   const [decorationsModalOpen, setDecorationsModalOpen] = useState(false)
+  const [badgesModalOpen, setBadgesModalOpen] = useState(false)
   
   // Shop modal state
   const [shopUnlocked, setShopUnlocked] = useState(false)
@@ -61,10 +62,23 @@ export default function SettingsPage() {
   const [purchasedBadges, setPurchasedBadges] = useState<string[]>([])
   const [unlockedThemes, setUnlockedThemes] = useState<string[]>(['default', 'pink', 'gray', 'green'])
   const [purchasedAchievements, setPurchasedAchievements] = useState<string[]>([])
+  
+  // Badges management
+  const [hiddenBadges, setHiddenBadges] = useState<string[]>([])
+  const [badgesOrder, setBadgesOrder] = useState<string[]>(['star', 'computer', 'snowflake', 'verified'])
+  const [draggedBadge, setDraggedBadge] = useState<string | null>(null)
 
   // Decoration state
   const [selectedTheme, setSelectedTheme] = useState<string>('default')
   const [selectedPattern, setSelectedPattern] = useState<string>('none')
+
+  // Badge config for display
+  const BADGE_DISPLAY: Record<string, { name: string; icon: React.ElementType; color: string }> = {
+    star: { name: 'Star Badge', icon: Star, color: 'text-amber-400' },
+    computer: { name: 'Computer Badge', icon: Computer, color: 'text-violet-500' },
+    snowflake: { name: 'Snowflake Badge', icon: Snowflake, color: 'text-cyan-400' },
+    verified: { name: 'Verified Badge', icon: BadgeCheck, color: 'text-blue-500' },
+  }
 
   // Theme options
   const themes = [
@@ -122,6 +136,8 @@ export default function SettingsPage() {
         setSelectedPattern(data.pattern_preference || 'none')
         setShopUnlocked(data.shop_unlocked || false)
         setSpentOrigins(data.spent_origins || 0)
+        setHiddenBadges(data.hidden_badges || [])
+        setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified'])
       }
       
       await loadOriginsBalance(user.id)
@@ -175,23 +191,81 @@ export default function SettingsPage() {
     const photoCountValue = photoCount || 0
     setUploadCount(photoCountValue)
     
-    // Максимальный баланс (всего заработано)
     const maxBalance = photoCountValue + (swipeCountValue * 0.5)
     setMaxOriginsBalance(maxBalance)
     
-    // Потраченные Origins (из БД)
     const spent = profileData?.spent_origins || 0
     setSpentOrigins(spent)
     
-    // Текущий баланс = заработано - потрачено
     const currentBalance = maxBalance - spent
     setOriginsBalance(currentBalance)
     
-    // Сохраняем текущий баланс в БД
     await supabase
       .from('profiles')
       .update({ origins_balance: currentBalance })
       .eq('id', userId)
+  }
+
+  async function saveBadgesSettings() {
+    await supabase
+      .from('profiles')
+      .update({
+        hidden_badges: hiddenBadges,
+        badges_order: badgesOrder
+      })
+      .eq('id', userId)
+    
+    alert('Badge settings saved!')
+    setBadgesModalOpen(false)
+  }
+
+  function toggleHideBadge(badgeId: string) {
+    if (hiddenBadges.includes(badgeId)) {
+      setHiddenBadges(hiddenBadges.filter(id => id !== badgeId))
+    } else {
+      setHiddenBadges([...hiddenBadges, badgeId])
+    }
+  }
+
+  function moveBadgeUp(badgeId: string) {
+    const index = badgesOrder.indexOf(badgeId)
+    if (index > 0) {
+      const newOrder = [...badgesOrder]
+      ;[newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]]
+      setBadgesOrder(newOrder)
+    }
+  }
+
+  function moveBadgeDown(badgeId: string) {
+    const index = badgesOrder.indexOf(badgeId)
+    if (index < badgesOrder.length - 1) {
+      const newOrder = [...badgesOrder]
+      ;[newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]]
+      setBadgesOrder(newOrder)
+    }
+  }
+
+  function handleDragStart(badgeId: string) {
+    setDraggedBadge(badgeId)
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault()
+  }
+
+  function handleDrop(targetBadgeId: string) {
+    if (draggedBadge && draggedBadge !== targetBadgeId) {
+      const draggedIndex = badgesOrder.indexOf(draggedBadge)
+      const targetIndex = badgesOrder.indexOf(targetBadgeId)
+      
+      if (draggedIndex !== -1 && targetIndex !== -1) {
+        const newOrder = [...badgesOrder]
+        newOrder.splice(draggedIndex, 1)
+        newOrder.splice(targetIndex, 0, draggedBadge)
+        setBadgesOrder(newOrder)
+      }
+    }
+    setDraggedBadge(null)
   }
 
   async function unlockShopPermanently() {
@@ -245,7 +319,6 @@ export default function SettingsPage() {
 
     setPurchasing(itemId)
 
-    // Check if already purchased
     if (type === 'badge' && purchasedBadges.includes(itemId)) {
       alert('You already own this badge!')
       setPurchasing(null)
@@ -262,7 +335,6 @@ export default function SettingsPage() {
       return false
     }
 
-    // Обновляем потраченные Origins
     const newSpent = spentOrigins + price
     const newBalance = maxOriginsBalance - newSpent
     
@@ -283,7 +355,6 @@ export default function SettingsPage() {
     setSpentOrigins(newSpent)
     setOriginsBalance(newBalance)
 
-    // Add purchased item
     if (type === 'badge') {
       const newBadges = [...purchasedBadges, itemId]
       setPurchasedBadges(newBadges)
@@ -292,13 +363,12 @@ export default function SettingsPage() {
         .update({ purchased_badges: newBadges })
         .eq('id', userId)
       
-      // Also add to profile badges
-      const { data: profile } = await supabase.from('profiles').select('badges').eq('id', userId).single()
-      const currentBadges = profile?.badges || []
-      if (!currentBadges.includes(itemId)) {
+      if (!badgesOrder.includes(itemId)) {
+        const newOrder = [...badgesOrder, itemId]
+        setBadgesOrder(newOrder)
         await supabase
           .from('profiles')
-          .update({ badges: [...currentBadges, itemId] })
+          .update({ badges_order: newOrder })
           .eq('id', userId)
       }
     }
@@ -391,7 +461,6 @@ export default function SettingsPage() {
     if (shopUnlocked) {
       setShopModalOpen(true)
     } else if (originsBalance >= 300) {
-      // Первое открытие - разблокируем магазин навсегда
       unlockShopPermanently()
       setShopModalOpen(true)
     } else {
@@ -410,6 +479,7 @@ export default function SettingsPage() {
   }
 
   const displayAvatar = avatarPreview ?? avatarUrl
+  const visibleBadges = badgesOrder.filter(b => !hiddenBadges.includes(b) && purchasedBadges.includes(b))
 
   return (
     <main className="px-4 pt-6 pb-4 max-w-lg mx-auto">
@@ -487,6 +557,18 @@ export default function SettingsPage() {
         </form>
       </div>
 
+      {/* My Badges Button */}
+      <button
+        onClick={() => setBadgesModalOpen(true)}
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
+      >
+        <Star className="w-4 h-4" />
+        My Badges
+        {visibleBadges.length > 0 && (
+          <span className="ml-2 text-xs text-green-500">{visibleBadges.length} shown</span>
+        )}
+      </button>
+
       {/* Decorations Button */}
       <button
         onClick={() => setDecorationsModalOpen(true)}
@@ -561,6 +643,102 @@ export default function SettingsPage() {
         <LogOut className="w-4 h-4" />
         Sign Out
       </button>
+
+      {/* My Badges Modal */}
+      {badgesModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setBadgesModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-border p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Star className="w-5 h-5 text-amber-500" />
+                My Badges
+              </h2>
+              <button onClick={() => setBadgesModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4">
+              <p className="text-sm text-muted-foreground mb-4 text-center">
+                Drag to reorder · Click 👁️ to hide/show
+              </p>
+              
+              <div className="space-y-2 mb-6">
+                {badgesOrder.map((badgeId) => {
+                  const badge = BADGE_DISPLAY[badgeId]
+                  if (!badge) return null
+                  const Icon = badge.icon
+                  const isHidden = hiddenBadges.includes(badgeId)
+                  const isOwned = purchasedBadges.includes(badgeId)
+                  
+                  if (!isOwned) return null
+                  
+                  return (
+                    <div
+                      key={badgeId}
+                      draggable
+                      onDragStart={() => handleDragStart(badgeId)}
+                      onDragOver={handleDragOver}
+                      onDrop={() => handleDrop(badgeId)}
+                      className={`flex items-center justify-between p-3 rounded-xl border ${isHidden ? 'border-dashed opacity-50' : 'border-border'} bg-muted/20 cursor-move transition-all hover:bg-muted/40`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <GripVertical className="w-4 h-4 text-muted-foreground" />
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                          <Icon className={`w-4 h-4 ${badge.color}`} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{badge.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {isHidden ? 'Hidden from profile' : 'Visible on profile'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => moveBadgeUp(badgeId)}
+                          className="p-1 rounded hover:bg-muted transition-colors"
+                          disabled={badgesOrder.indexOf(badgeId) === 0}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          onClick={() => moveBadgeDown(badgeId)}
+                          className="p-1 rounded hover:bg-muted transition-colors"
+                          disabled={badgesOrder.indexOf(badgeId) === badgesOrder.length - 1}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          onClick={() => toggleHideBadge(badgeId)}
+                          className={`p-1 rounded transition-colors ${isHidden ? 'hover:bg-green-500/20' : 'hover:bg-destructive/20'}`}
+                        >
+                          {isHidden ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-destructive" />}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={saveBadgesSettings}
+                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all"
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={() => setBadgesModalOpen(false)}
+                  className="flex-1 py-3 rounded-xl bg-muted text-muted-foreground text-sm font-semibold hover:bg-muted/80 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Shop Modal - Locked State */}
       {shopModalOpen && !shopUnlocked && originsBalance < 300 && (
