@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, X, Palette, Circle, Flower, Triangle, Square, Heart, Sparkles } from 'lucide-react'
+import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X, Star, Computer, Snowflake, BadgeCheck, Palette, Trophy, ShoppingCart, Zap } from 'lucide-react'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -25,9 +25,14 @@ export default function SettingsPage() {
   // Modal states
   const [shopModalOpen, setShopModalOpen] = useState(false)
   const [originsModalOpen, setOriginsModalOpen] = useState(false)
-  const [decorationsModalOpen, setDecorationsModalOpen] = useState(false)
+  const [secretModalOpen, setSecretModalOpen] = useState(false)
   
   // Shop modal state
+  const [shopUnlocked, setShopUnlocked] = useState(false)
+  const [shopError, setShopError] = useState<string | null>(null)
+  const [purchasing, setPurchasing] = useState<string | null>(null)
+  
+  // Shop dialog messages for locked shop
   const [shopDialogStep, setShopDialogStep] = useState(0)
   const shopDialogMessages = [
     "No entry.",
@@ -40,33 +45,38 @@ export default function SettingsPage() {
     "(bye!)"
   ]
   
-  // Decorations state
-  const [selectedTheme, setSelectedTheme] = useState<string>('default')
-  const [selectedPattern, setSelectedPattern] = useState<string>('none')
+  // Secret quest state
+  const [secretCompleted, setSecretCompleted] = useState(false)
+  const [secretButtonFound, setSecretButtonFound] = useState(false)
+  const [showSecretHint, setShowSecretHint] = useState(false)
   
   // Origins balance
   const [originsBalance, setOriginsBalance] = useState(0)
   const [uploadCount, setUploadCount] = useState(0)
   const [swipeCount, setSwipeCount] = useState(0)
+  
+  // Purchased items
+  const [purchasedBadges, setPurchasedBadges] = useState<string[]>([])
+  const [unlockedThemes, setUnlockedThemes] = useState<string[]>(['default', 'pink', 'gray', 'green'])
+  const [purchasedAchievements, setPurchasedAchievements] = useState<string[]>([])
 
-  // Theme options
-  const themes = [
-    { id: 'default', name: 'Default', bg: 'bg-white dark:bg-gray-900', text: 'text-black dark:text-white', preview: 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900' },
-    { id: 'black', name: 'Black', bg: 'bg-black', text: 'text-white', preview: 'bg-black' },
-    { id: 'pink', name: 'Pink', bg: 'bg-pink-100 dark:bg-pink-900', text: 'text-pink-900 dark:text-pink-100', preview: 'bg-pink-300 dark:bg-pink-700' },
-    { id: 'gray', name: 'Gray', bg: 'bg-gray-300 dark:bg-gray-700', text: 'text-gray-800 dark:text-gray-200', preview: 'bg-gray-400 dark:bg-gray-600' },
-    { id: 'green', name: 'Green', bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-900 dark:text-green-100', preview: 'bg-green-300 dark:bg-green-700' },
-  ]
-
-  // Pattern options (бесцветные серые)
-  const patterns = [
-    { id: 'none', name: 'None', icon: Circle, preview: 'bg-transparent' },
-    { id: 'circles', name: 'Circles', icon: Circle, preview: 'bg-[radial-gradient(circle_at_center,_gray_1px,_transparent_1px)] bg-[length:20px_20px]' },
-    { id: 'triangles', name: 'Triangles', icon: Triangle, preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%20d%3D%22M10%200L20%2017.32H0L10%200z%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
-    { id: 'squares', name: 'Squares', icon: Square, preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
-    { id: 'flowers', name: 'Flowers', icon: Flower, preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210%22%20r%3D%223%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%223%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2217%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%223%22%20cy%3D%2210%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2210%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
-    { id: 'hearts', name: 'Hearts', icon: Heart, preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%20d%3D%22M10%2018l-1.5-1.4C4.5%2012.8%202%2010.5%202%207.5%202%205%204%203%206.5%203c1.5%200%202.9.8%203.5%202.1.6-1.3%202-2.1%203.5-2.1C16%203%2018%205%2018%207.5c0%203-2.5%205.3-6.5%209.1L10%2018z%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
-  ]
+  // Shop items
+  const shopItems = {
+    badges: [
+      { id: 'star', name: 'Star Badge', icon: Star, price: 450, color: 'text-amber-400', description: 'A shining star badge' },
+      { id: 'computer', name: 'Computer Badge', icon: Computer, price: 350, color: 'text-violet-500', description: 'Tech enthusiast badge' },
+      { id: 'snowflake', name: 'Snowflake Badge', icon: Snowflake, price: 2000, color: 'text-cyan-400', description: 'Rare snowflake badge' },
+      { id: 'verified', name: 'Verified Badge', icon: BadgeCheck, price: 9999, color: 'text-blue-500', description: 'Coming Soon!', disabled: true },
+    ],
+    themes: [
+      { id: 'black', name: 'Black Theme', icon: Palette, price: 500, description: 'Unlock black theme for your profile' },
+    ],
+    achievements: [
+      { id: 'shopkeeper', name: "Shopkeepers' Favorite", icon: ShoppingCart, price: 500, description: 'Spent 500 Origins in shop' },
+      { id: 'buyer', name: 'Buyer', icon: ShoppingBag, price: 200, description: 'Made first purchase' },
+      { id: 'shopping', name: 'Shopping', icon: Zap, price: 400, description: 'Bought 3 items' },
+    ]
+  }
 
   useEffect(() => {
     async function load() {
@@ -80,12 +90,14 @@ export default function SettingsPage() {
         setUsername(data.username ?? '')
         setBio(data.bio ?? '')
         setAvatarUrl(data.avatar_url)
-        setSelectedTheme(data.theme_preference || 'default')
-        setSelectedPattern(data.pattern_preference || 'none')
+        setPurchasedBadges(data.purchased_badges || [])
+        setUnlockedThemes(data.unlocked_themes || ['default', 'pink', 'gray', 'green'])
+        setPurchasedAchievements(data.purchased_achievements || [])
       }
       
       await loadOriginsBalance(user.id)
-      applyThemeAndPattern(data?.theme_preference || 'default', data?.pattern_preference || 'none')
+      await checkSecretAchievement(user.id)
+      await checkShopUnlock()
     }
     load()
   }, [])
@@ -93,7 +105,7 @@ export default function SettingsPage() {
   async function loadOriginsBalance(userId: string) {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('swipe_count')
+      .select('swipe_count, origins_balance')
       .eq('id', userId)
       .single()
     
@@ -112,44 +124,145 @@ export default function SettingsPage() {
     setOriginsBalance(balance)
   }
 
-  function applyThemeAndPattern(themeId: string, patternId: string) {
-    const theme = themes.find(t => t.id === themeId)
-    const pattern = patterns.find(p => p.id === patternId)
-    
-    if (themeId === 'default') {
-      document.documentElement.classList.remove('custom-theme')
-      document.documentElement.style.removeProperty('--custom-bg')
-      document.documentElement.style.removeProperty('--custom-text')
+  async function checkShopUnlock() {
+    // Shop unlocks at 300 Origins
+    if (originsBalance >= 300) {
+      setShopUnlocked(true)
+      setShopError(null)
     } else {
-      document.documentElement.classList.add('custom-theme')
-      if (theme) {
-        document.documentElement.style.setProperty('--custom-bg', theme.bg)
-        document.documentElement.style.setProperty('--custom-text', theme.text)
-      }
-    }
-    
-    // Apply pattern
-    if (patternId === 'none') {
-      document.body.classList.remove('has-pattern')
-      document.body.style.backgroundImage = ''
-    } else if (pattern) {
-      document.body.classList.add('has-pattern')
-      document.body.style.backgroundImage = pattern.preview
+      setShopUnlocked(false)
+      setShopError(`Need ${300 - originsBalance} more Origins to unlock the shop`)
     }
   }
 
-  async function saveThemeAndPattern(themeId: string, patternId: string) {
-    setSelectedTheme(themeId)
-    setSelectedPattern(patternId)
-    applyThemeAndPattern(themeId, patternId)
-    
-    await supabase
+  async function purchaseItem(type: string, itemId: string, price: number) {
+    if (originsBalance < price) {
+      alert(`Not enough Origins! You need ${price - originsBalance} more.`)
+      return false
+    }
+
+    setPurchasing(itemId)
+
+    // Check if already purchased
+    if (type === 'badge' && purchasedBadges.includes(itemId)) {
+      alert('You already own this badge!')
+      setPurchasing(null)
+      return false
+    }
+    if (type === 'theme' && unlockedThemes.includes(itemId)) {
+      alert('You already unlocked this theme!')
+      setPurchasing(null)
+      return false
+    }
+    if (type === 'achievement' && purchasedAchievements.includes(itemId)) {
+      alert('You already have this achievement!')
+      setPurchasing(null)
+      return false
+    }
+
+    // Deduct Origins
+    const newBalance = originsBalance - price
+    const { error: balanceError } = await supabase
       .from('profiles')
-      .update({
-        theme_preference: themeId,
-        pattern_preference: patternId
-      })
+      .update({ origins_balance: newBalance })
       .eq('id', userId)
+
+    if (balanceError) {
+      alert('Error processing purchase')
+      setPurchasing(null)
+      return false
+    }
+
+    setOriginsBalance(newBalance)
+
+    // Add purchased item
+    if (type === 'badge') {
+      const newBadges = [...purchasedBadges, itemId]
+      setPurchasedBadges(newBadges)
+      await supabase
+        .from('profiles')
+        .update({ purchased_badges: newBadges })
+        .eq('id', userId)
+      
+      // Also add to profile badges
+      const { data: profile } = await supabase.from('profiles').select('badges').eq('id', userId).single()
+      const currentBadges = profile?.badges || []
+      if (!currentBadges.includes(itemId)) {
+        await supabase
+          .from('profiles')
+          .update({ badges: [...currentBadges, itemId] })
+          .eq('id', userId)
+      }
+    }
+
+    if (type === 'theme') {
+      const newThemes = [...unlockedThemes, itemId]
+      setUnlockedThemes(newThemes)
+      await supabase
+        .from('profiles')
+        .update({ unlocked_themes: newThemes })
+        .eq('id', userId)
+    }
+
+    if (type === 'achievement') {
+      const newAchievements = [...purchasedAchievements, itemId]
+      setPurchasedAchievements(newAchievements)
+      await supabase
+        .from('profiles')
+        .update({ purchased_achievements: newAchievements })
+        .eq('id', userId)
+      
+      // Also add as real achievement
+      let achievementName = ''
+      if (itemId === 'shopkeeper') achievementName = "Shopkeepers' Favorite"
+      if (itemId === 'buyer') achievementName = 'Buyer'
+      if (itemId === 'shopping') achievementName = 'Shopping'
+      
+      await supabase
+        .from('achievements')
+        .insert({
+          user_id: userId,
+          achievement_type: 'shop',
+          achievement_name: achievementName,
+          achieved_at: new Date().toISOString()
+        })
+    }
+
+    alert('Purchase successful! 🎉')
+    setPurchasing(null)
+    return true
+  }
+
+  async function checkSecretAchievement(userId: string) {
+    const { data } = await supabase
+      .from('achievements')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('achievement_name', 'Secret Agent: 1st Quest')
+      .maybeSingle()
+    
+    if (data) {
+      setSecretCompleted(true)
+    }
+  }
+
+  async function completeSecretQuest() {
+    if (secretCompleted) return
+    
+    const { error } = await supabase
+      .from('achievements')
+      .insert({
+        user_id: userId,
+        achievement_type: 'secret',
+        achievement_name: 'Secret Agent: 1st Quest',
+        achieved_at: new Date().toISOString()
+      })
+    
+    if (!error) {
+      setSecretCompleted(true)
+      setSecretModalOpen(false)
+      alert('🎉 Achievement unlocked: Secret Agent: 1st Quest!')
+    }
   }
 
   function handleAvatarChange(f: File) {
@@ -200,8 +313,13 @@ export default function SettingsPage() {
   }
 
   function handleShopClick() {
-    setShopDialogStep(0)
-    setShopModalOpen(true)
+    if (shopUnlocked) {
+      setShopDialogStep(0)
+      setShopModalOpen(true)
+    } else {
+      setShopDialogStep(0)
+      setShopModalOpen(true)
+    }
   }
 
   function handleShopNext() {
@@ -291,15 +409,6 @@ export default function SettingsPage() {
         </form>
       </div>
 
-      {/* Decorations Button */}
-      <button
-        onClick={() => setDecorationsModalOpen(true)}
-        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
-      >
-        <Palette className="w-4 h-4" />
-        Decorations
-      </button>
-
       {/* Shop Button */}
       <button
         onClick={handleShopClick}
@@ -307,15 +416,34 @@ export default function SettingsPage() {
       >
         <ShoppingBag className="w-4 h-4" />
         Shop
+        {!shopUnlocked && (
+          <span className="ml-2 text-xs text-amber-500">🔒 {Math.max(0, 300 - originsBalance)} to unlock</span>
+        )}
+        {shopUnlocked && (
+          <span className="ml-2 text-xs text-green-500">✓ Unlocked</span>
+        )}
       </button>
 
       {/* My Origins Button */}
       <button
         onClick={() => setOriginsModalOpen(true)}
-        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-4 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
       >
         <Coins className="w-4 h-4" />
         My Origins
+        <span className="ml-2 text-amber-500 font-semibold">{originsBalance.toFixed(1)}</span>
+      </button>
+
+      {/* Secret Button */}
+      <button
+        onClick={() => setSecretModalOpen(true)}
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-4 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
+      >
+        <Key className="w-4 h-4" />
+        Secret
+        {secretCompleted && (
+          <span className="ml-2 text-xs text-green-500">✓ Completed</span>
+        )}
       </button>
 
       {/* Resources Section */}
@@ -348,8 +476,8 @@ export default function SettingsPage() {
         Sign Out
       </button>
 
-      {/* Shop Modal */}
-      {shopModalOpen && (
+      {/* Shop Modal - Locked State */}
+      {shopModalOpen && !shopUnlocked && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShopModalOpen(false)}>
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="relative h-48 bg-cover bg-center" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=800&h=400&fit=crop)' }}>
@@ -364,12 +492,178 @@ export default function SettingsPage() {
               <p className="text-lg font-medium text-foreground mb-4">
                 {shopDialogMessages[shopDialogStep]}
               </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                You need {300 - originsBalance} more Origins to unlock the shop!
+              </p>
               <button
                 onClick={handleShopNext}
                 className="w-full py-3 rounded-xl bg-black dark:bg-white text-white dark:text-black text-sm font-semibold hover:bg-black/90 dark:hover:bg-white/90 transition-all"
               >
                 {shopDialogStep + 1 < shopDialogMessages.length ? 'Continue...' : 'Close'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shop Modal - Unlocked State */}
+      {shopModalOpen && shopUnlocked && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShopModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-border p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-purple-500" />
+                Shop
+              </h2>
+              <button onClick={() => setShopModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4">
+              <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                  Your Origins: <span className="font-bold">{originsBalance.toFixed(1)}</span>
+                </p>
+              </div>
+
+              {/* Badges Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Star className="w-4 h-4" />
+                  Badges
+                </h3>
+                <div className="space-y-2">
+                  {shopItems.badges.map((item) => {
+                    const Icon = item.icon
+                    const isOwned = purchasedBadges.includes(item.id)
+                    const canAfford = originsBalance >= item.price
+                    const isDisabled = item.disabled
+                    
+                    return (
+                      <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border ${isOwned ? 'border-green-500/30 bg-green-500/5' : 'border-border'} ${isDisabled ? 'opacity-50' : ''}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <Icon className={`w-5 h-5 ${item.color}`} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                          </div>
+                        </div>
+                        {isOwned ? (
+                          <span className="text-xs text-green-500 font-medium">✓ Owned</span>
+                        ) : isDisabled ? (
+                          <span className="text-xs text-muted-foreground">Coming Soon</span>
+                        ) : (
+                          <button
+                            onClick={() => purchaseItem('badge', item.id, item.price)}
+                            disabled={purchasing === item.id || !canAfford}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 ${
+                              canAfford 
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                            }`}
+                          >
+                            <Coins className="w-3 h-3" />
+                            {item.price}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Themes Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Palette className="w-4 h-4" />
+                  Themes
+                </h3>
+                <div className="space-y-2">
+                  {shopItems.themes.map((item) => {
+                    const Icon = item.icon
+                    const isOwned = unlockedThemes.includes(item.id)
+                    const canAfford = originsBalance >= item.price
+                    
+                    return (
+                      <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border ${isOwned ? 'border-green-500/30 bg-green-500/5' : 'border-border'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                          </div>
+                        </div>
+                        {isOwned ? (
+                          <span className="text-xs text-green-500 font-medium">✓ Unlocked</span>
+                        ) : (
+                          <button
+                            onClick={() => purchaseItem('theme', item.id, item.price)}
+                            disabled={purchasing === item.id || !canAfford}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 ${
+                              canAfford 
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                            }`}
+                          >
+                            <Coins className="w-3 h-3" />
+                            {item.price}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Achievements Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Trophy className="w-4 h-4" />
+                  Achievements
+                </h3>
+                <div className="space-y-2">
+                  {shopItems.achievements.map((item) => {
+                    const Icon = item.icon
+                    const isOwned = purchasedAchievements.includes(item.id)
+                    const canAfford = originsBalance >= item.price
+                    
+                    return (
+                      <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border ${isOwned ? 'border-green-500/30 bg-green-500/5' : 'border-border'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                          </div>
+                        </div>
+                        {isOwned ? (
+                          <span className="text-xs text-green-500 font-medium">✓ Owned</span>
+                        ) : (
+                          <button
+                            onClick={() => purchaseItem('achievement', item.id, item.price)}
+                            disabled={purchasing === item.id || !canAfford}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 ${
+                              canAfford 
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                            }`}
+                          >
+                            <Coins className="w-3 h-3" />
+                            {item.price}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -417,78 +711,68 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Decorations Modal */}
-      {decorationsModalOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setDecorationsModalOpen(false)}>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full shadow-2xl my-8" onClick={(e) => e.stopPropagation()}>
+      {/* Secret Modal */}
+      {secretModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setSecretModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-border p-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Palette className="w-5 h-5 text-purple-500" />
-                Decorations
+                <Key className="w-5 h-5 text-purple-500" />
+                Secret Quest
               </h2>
-              <button onClick={() => setDecorationsModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+              <button onClick={() => setSecretModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-6">
-              {/* Themes Section */}
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-foreground mb-3">Themes</h3>
-                <div className="grid grid-cols-5 gap-2">
-                  {themes.map((theme) => (
+              {secretCompleted ? (
+                <div className="text-center">
+                  <p className="text-green-500 mb-2">✓ Achievement Unlocked!</p>
+                  <p className="text-sm text-muted-foreground">You've already completed this quest.</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-foreground mb-4 text-center">
+                    Find the hidden button to unlock "Secret Agent: 1st Quest" achievement
+                  </p>
+                  
+                  <div className="relative bg-gradient-to-br from-gray-700 to-gray-900 rounded-xl p-8 mb-4 overflow-hidden">
+                    <img 
+                      src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&h=300&fit=crop" 
+                      alt="Mysterious background" 
+                      className="w-full h-40 object-cover rounded-lg opacity-80"
+                    />
+                    
                     <button
-                      key={theme.id}
-                      onClick={() => saveThemeAndPattern(theme.id, selectedPattern)}
-                      className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
-                        selectedTheme === theme.id
-                          ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-gray-900'
-                          : 'hover:bg-muted/50'
-                      }`}
+                      onClick={completeSecretQuest}
+                      className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-purple-500/0 hover:bg-purple-500/80 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100"
+                      onMouseEnter={() => setSecretButtonFound(true)}
+                      onMouseLeave={() => setSecretButtonFound(false)}
                     >
-                      <div className={`w-10 h-10 rounded-lg ${theme.preview} border border-border`} />
-                      <span className={`text-xs ${selectedTheme === theme.id ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                        {theme.name}
-                      </span>
+                      <Key className="w-4 h-4 text-white" />
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Patterns Section */}
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-foreground mb-3">Patterns</h3>
-                <div className="grid grid-cols-5 gap-2">
-                  {patterns.map((pattern) => {
-                    const Icon = pattern.icon
-                    return (
-                      <button
-                        key={pattern.id}
-                        onClick={() => saveThemeAndPattern(selectedTheme, pattern.id)}
-                        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
-                          selectedPattern === pattern.id
-                            ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-gray-900'
-                            : 'hover:bg-muted/50'
-                        }`}
-                      >
-                        <div className={`w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center border border-border`}>
-                          {pattern.id === 'none' ? (
-                            <Icon className="w-5 h-5 text-gray-500" />
-                          ) : (
-                            <div className={`w-full h-full rounded-lg ${pattern.preview}`} />
-                          )}
-                        </div>
-                        <span className={`text-xs ${selectedPattern === pattern.id ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                          {pattern.name}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <p className="text-xs text-muted-foreground text-center">
-                Your decorations will appear on your profile page
-              </p>
+                    
+                    <button
+                      className="absolute top-3 left-3 w-6 h-6 rounded-full bg-gray-500/50 hover:bg-gray-500/70 transition-all flex items-center justify-center group"
+                      onClick={() => setShowSecretHint(!showSecretHint)}
+                    >
+                      <span className="text-white text-xs font-bold">?</span>
+                    </button>
+                  </div>
+                  
+                  {showSecretHint && (
+                    <p className="text-xs text-muted-foreground text-center mt-2 animate-pulse">
+                      Hint: Look in the bottom right corner... 👀
+                    </p>
+                  )}
+                  
+                  {secretButtonFound && !secretCompleted && (
+                    <p className="text-xs text-green-500 text-center mt-2">
+                      You found it! Click the key button to claim your achievement!
+                    </p>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
