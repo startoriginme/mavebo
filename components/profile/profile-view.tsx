@@ -164,7 +164,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   async function loadUserStats() {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('swipe_count, origins_balance')
+      .select('swipe_count, origins_balance, purchased_badges')
       .eq('id', profile.id)
       .single()
     
@@ -345,9 +345,18 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     }
   }
 
-  // Добавляем значок для конкретных пользователей
+  // Собираем все значки: из БД + купленные в магазине + специальные для пользователей
   let badges: BadgeType[] = profile.badges ?? []
   
+  // Добавляем купленные значки из магазина
+  const purchasedBadges = profile.purchased_badges || []
+  for (const badge of purchasedBadges) {
+    if (!badges.includes(badge as BadgeType)) {
+      badges.push(badge as BadgeType)
+    }
+  }
+  
+  // Специальные значки для конкретных пользователей
   const isWinterWastaken = profile.username === 'winterwastaken' || profile.id === 'c2c721aa-bc04-4c6e-a86b-f3f105bd738f'
   const isViscaelbarca = profile.username === 'viscaelbarca' || profile.id === 'ce0f7b34-b8d7-41b7-8437-dc3fc95399bd'
   const isZaharques = profile.username === 'zaharques' || profile.id === '9e6a9c61-1205-4149-9328-7ea038b10726'
