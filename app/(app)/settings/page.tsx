@@ -231,38 +231,35 @@ export default function SettingsPage() {
   }
 
   async function loadOriginsBalance(userId: string) {
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('swipe_count, origins_balance, spent_origins')
-      .eq('id', userId)
-      .single()
-    
-    const swipeCountValue = profileData?.swipe_count || 0
-    setSwipeCount(swipeCountValue)
-    
-    const { count: photoCount } = await supabase
-      .from('photos')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-    
-    const photoCountValue = photoCount || 0
-    setUploadCount(photoCountValue)
-    
-    const maxBalance = photoCountValue + (swipeCountValue * 0.5)
-    setMaxOriginsBalance(maxBalance)
-    
-    const spent = profileData?.spent_origins || 0
-    setSpentOrigins(spent)
-    
-    const currentBalance = maxBalance - spent
-    setOriginsBalance(currentBalance)
-    
-    await supabase
-      .from('profiles')
-      .update({ origins_balance: currentBalance })
-      .eq('id', userId)
-  }
-
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('swipe_count, origins_balance, spent_origins')
+    .eq('id', userId)
+    .single()
+  
+  const swipeCountValue = profileData?.swipe_count || 0
+  setSwipeCount(swipeCountValue)
+  
+  const { count: photoCount } = await supabase
+    .from('photos')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+  
+  const photoCountValue = photoCount || 0
+  setUploadCount(photoCountValue)
+  
+  // НЕ пересчитываем баланс! Просто берем из БД
+  const currentBalance = profileData?.origins_balance || 0
+  setOriginsBalance(currentBalance)
+  
+  // Вычисляем maxBalance только для отображения
+  const maxBalance = photoCountValue + (swipeCountValue * 0.5)
+  setMaxOriginsBalance(maxBalance)
+  
+  const spent = profileData?.spent_origins || 0
+  setSpentOrigins(spent)
+}
+  
   async function saveBadgesSettings() {
     await supabase
       .from('profiles')
