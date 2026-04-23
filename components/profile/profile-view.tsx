@@ -186,23 +186,23 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   }
 
   async function loadOriginsBalance() {
-    // Просто берем баланс из БД, НЕ ПЕРЕСЧИТЫВАЕМ!
+    // Берем текущий баланс из БД
     const { data: profileData } = await supabase
       .from('profiles')
       .select('origins_balance, spent_origins')
       .eq('id', profile.id)
       .single()
     
-    // Берем значение из БД
+    // Текущий баланс из БД
     const currentBalance = profileData?.origins_balance ?? 0
     setOriginsBalance(currentBalance)
     
     const spent = profileData?.spent_origins ?? 0
     setSpentOrigins(spent)
     
-    // Только для отображения (не сохраняем в БД)
-    const maxBalance = uploadCount + (swipeCount * 0.5)
-    setMaxOriginsBalance(maxBalance)
+    // Максимальный баланс = заработано от активности
+    const earnedFromActivity = uploadCount + (swipeCount * 0.5)
+    setMaxOriginsBalance(earnedFromActivity + spent)
   }
 
   async function loadUserStats() {
@@ -306,6 +306,8 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
       setSwipeCount(newCount)
       setShowSwipeEditor(false)
       await checkAndAddSwipeAchievements(newCount)
+      // Обновляем баланс после изменения свайпов
+      await loadOriginsBalance()
       return true
     }
     return false
@@ -596,8 +598,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
                 </p>
               </div>
               <p className="text-xs opacity-70 mt-1">
-                {uploadCount} photos + {swipeCount} swipes ×0.5 = {maxOriginsBalance.toFixed(1)} total
-                {spentOrigins > 0 && ` · ${spentOrigins.toFixed(1)} spent`}
+                Total earned: {(maxOriginsBalance).toFixed(1)} · Spent: {spentOrigins.toFixed(1)}
               </p>
             </div>
           )}
