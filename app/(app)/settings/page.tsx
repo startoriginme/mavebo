@@ -229,8 +229,7 @@ export default function SettingsPage() {
       })
       .eq('id', userId)
   }
-
-  async function loadOriginsBalance(userId: string) {
+async function loadOriginsBalance(userId: string) {
   const { data: profileData } = await supabase
     .from('profiles')
     .select('swipe_count, origins_balance, spent_origins')
@@ -248,16 +247,22 @@ export default function SettingsPage() {
   const photoCountValue = photoCount || 0
   setUploadCount(photoCountValue)
   
-  // НЕ пересчитываем баланс! Просто берем из БД
-  const currentBalance = profileData?.origins_balance || 0
+  // Берем баланс напрямую из БД
+  const currentBalance = profileData?.origins_balance ?? 0
   setOriginsBalance(currentBalance)
   
-  // Вычисляем maxBalance только для отображения
+  // Только для отображения
   const maxBalance = photoCountValue + (swipeCountValue * 0.5)
   setMaxOriginsBalance(maxBalance)
   
-  const spent = profileData?.spent_origins || 0
+  const spent = profileData?.spent_origins ?? 0
   setSpentOrigins(spent)
+  
+  // !!! УДАЛИ или ЗАКОММЕНТИРУЙ ЭТОТ БЛОК !!!
+  // await supabase
+  //   .from('profiles')
+  //   .update({ origins_balance: currentBalance })
+  //   .eq('id', userId)
 }
   
   async function saveBadgesSettings() {
