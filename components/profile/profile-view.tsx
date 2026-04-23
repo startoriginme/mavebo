@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Photo, BadgeType } from '@/lib/types'
-import { UserPlus, UserCheck, Images, BadgeCheck, Snowflake, Monitor, Star, Settings, Trophy, Flame, Camera, Sparkles, X, Search, Upload, Eye, EyeOff, Edit2, Minus, Plus, Coins, Glasses, Crown, Diamond, Heart, Award } from 'lucide-react'
+import { UserPlus, UserCheck, Images, BadgeCheck, Snowflake, Monitor, Star, Settings, Trophy, Flame, Camera, Sparkles, X, Search, Upload, Eye, EyeOff, Edit2, Minus, Plus, Coins, Glasses, Crown, Diamond, Heart, Award, ShoppingCart, ShoppingBag, Zap } from 'lucide-react'
 import PhotoViewer from '@/components/photo-viewer'
 import Link from 'next/link'
 
@@ -67,8 +67,6 @@ const SHOP_ACHIEVEMENTS = [
   { title: "Shopping", icon: Zap, color: "text-yellow-500", description: "Bought 3 items" },
 ]
 
-import { ShoppingCart, ShoppingBag, Zap } from 'lucide-react'
-
 // Секретные ачивки
 const SECRET_ACHIEVEMENTS = [
   { title: "Secret Agent: 1st Quest", icon: Glasses, color: "text-purple-500", description: "Completed the first secret quest" },
@@ -111,8 +109,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   const [following, setFollowing] = useState(profile.is_following ?? false)
   const [followersCount, setFollowersCount] = useState(profile.followers_count ?? 0)
   const [viewer, setViewer] = useState<Photo | null>(null)
-  const [realSwipeCount, setRealSwipeCount] = useState(0)
-  const [publicSwipeCount, setPublicSwipeCount] = useState(0)
+  const [swipeCount, setSwipeCount] = useState(0)
   const [originalSwipeCount, setOriginalSwipeCount] = useState(0)
   const [uploadCount, setUploadCount] = useState(photos.length)
   const [achievements, setAchievements] = useState<Achievement[]>([])
@@ -152,7 +149,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   // Пересчитываем баланс Origins при изменении свайпов и фоток
   useEffect(() => {
     calculateOriginsBalance()
-  }, [realSwipeCount, uploadCount])
+  }, [swipeCount, uploadCount])
 
   async function loadBadgeSettings() {
     const { data } = await supabase
@@ -189,7 +186,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   }
 
   async function calculateOriginsBalance() {
-    const maxBalance = uploadCount + (realSwipeCount * 0.5)
+    const maxBalance = uploadCount + (swipeCount * 0.5)
     setMaxOriginsBalance(maxBalance)
     
     const { data: profileData } = await supabase
@@ -215,17 +212,15 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   async function loadUserStats() {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('swipe_count, real_swipe_count, origins_balance, purchased_badges, spent_origins, purchased_achievements')
+      .select('swipe_count, origins_balance, purchased_badges, spent_origins, purchased_achievements')
       .eq('id', profile.id)
       .single()
     
     if (profileData) {
-      const realCount = profileData.real_swipe_count || 0
-      const publicCount = profileData.swipe_count || 0
-      setRealSwipeCount(realCount)
-      setPublicSwipeCount(publicCount)
-      setOriginalSwipeCount(Math.min(realCount, publicCount))
-      setTempSwipeValue(publicCount)
+      const count = profileData.swipe_count || 0
+      setSwipeCount(count)
+      setOriginalSwipeCount(count)
+      setTempSwipeValue(count)
       if (profileData.origins_balance !== undefined) {
         setOriginsBalance(profileData.origins_balance)
       }
@@ -295,9 +290,9 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
       }, { onConflict: 'user_id' })
   }
 
-  async function updatePublicSwipeCount(newCount: number) {
-    if (newCount > realSwipeCount) {
-      alert(`You cannot exceed your real swipe count (${realSwipeCount})`)
+  async function updateSwipeCount(newCount: number) {
+    if (newCount > originalSwipeCount) {
+      alert(`You cannot exceed your actual swipe count (${originalSwipeCount})`)
       return false
     }
     
@@ -312,23 +307,12 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
       .eq('id', profile.id)
     
     if (!error) {
-      setPublicSwipeCount(newCount)
+      setSwipeCount(newCount)
       setShowSwipeEditor(false)
+      await checkAndAddSwipeAchievements(newCount)
       return true
     }
     return false
-  }
-
-  async function resetToRealSwipes() {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ swipe_count: realSwipeCount })
-      .eq('id', profile.id)
-    
-    if (!error) {
-      setPublicSwipeCount(realSwipeCount)
-      alert('Reset to real swipe count!')
-    }
   }
 
   async function checkAndAddSwipeAchievements(currentCount: number) {
@@ -454,7 +438,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     allAvailableBadges.includes(badgeId as BadgeType) && !hiddenBadges.includes(badgeId)
   )
   
-  // Фильтруем ачивки для отображения (включая покупные из магазина)
+  // Собираем все ачивки (обычные + из магазина)
   const purchasedAchievements = profile.purchased_achievements || []
   const allAchievements = [...achievements]
   
@@ -476,6 +460,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     }
   }
   
+  // Фильтруем ачивки для отображения
   const visibleAchievements = allAchievements.filter(ach => !hiddenAchievements.has(ach.id))
   const hiddenAchievementsList = allAchievements.filter(ach => hiddenAchievements.has(ach.id))
 
@@ -505,7 +490,6 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
 
   const currentTheme = getCurrentTheme()
   const currentPattern = getCurrentPattern()
-  const displaySwipeCount = hideSwipeCount && !isOwn ? '???' : publicSwipeCount
 
   return (
     <main className="px-4 pt-6 pb-4 max-w-xl mx-auto">
@@ -578,22 +562,22 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
               <div className="flex items-center justify-center gap-1">
                 <Flame className="w-4 h-4 text-orange-500" />
                 <p className="text-lg font-semibold">
-                  {displaySwipeCount}
+                  {hideSwipeCount && !isOwn ? '???' : swipeCount}
                 </p>
                 {isOwn && (
                   <button
                     onClick={() => {
-                      setTempSwipeValue(publicSwipeCount)
+                      setTempSwipeValue(swipeCount)
                       setShowSwipeEditor(true)
                     }}
                     className="p-1 rounded-md opacity-70 hover:opacity-100 transition-colors"
-                    title="Edit public swipe count"
+                    title="Edit swipe count"
                   >
                     <Edit2 className="w-3 h-3" />
                   </button>
                 )}
               </div>
-              <p className="text-xs opacity-70">Public Swipes</p>
+              <p className="text-xs opacity-70">Swipes</p>
               {isOwn && (
                 <button
                   onClick={toggleHideSwipeCount}
@@ -606,23 +590,6 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
             </div>
           </div>
 
-          {/* Real Swipes - только для владельца */}
-          {isOwn && (
-            <div className="mt-2">
-              <div className="flex items-center justify-center gap-2 text-xs opacity-60">
-                <span>Real Swipes: {realSwipeCount}</span>
-                {publicSwipeCount !== realSwipeCount && (
-                  <button
-                    onClick={resetToRealSwipes}
-                    className="text-primary hover:underline"
-                  >
-                    Reset to real
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Origins Balance - только для владельца профиля */}
           {isOwn && (
             <div className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 inline-block mx-auto">
@@ -633,7 +600,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
                 </p>
               </div>
               <p className="text-xs opacity-70 mt-1">
-                {uploadCount} photos + {realSwipeCount} swipes ×0.5 = {maxOriginsBalance.toFixed(1)} total
+                {uploadCount} photos + {swipeCount} swipes ×0.5 = {maxOriginsBalance.toFixed(1)} total
                 {spentOrigins > 0 && ` · ${spentOrigins.toFixed(1)} spent`}
               </p>
             </div>
@@ -670,12 +637,9 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
       {showSwipeEditor && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 className="text-lg font-semibold mb-4">Edit Public Swipe Count</h3>
+            <h3 className="text-lg font-semibold mb-4">Edit Swipe Count</h3>
             <p className="text-sm text-muted-foreground mb-2">
-              Real Swipes: {realSwipeCount} · Current Public: {publicSwipeCount}
-            </p>
-            <p className="text-xs text-muted-foreground mb-3">
-              You can only set Public Swipes lower than your Real Swipes
+              Current: {swipeCount} / Max: {originalSwipeCount}
             </p>
             <div className="flex items-center gap-2 mb-4">
               <button
@@ -690,10 +654,10 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
                 onChange={(e) => setTempSwipeValue(parseInt(e.target.value) || 0)}
                 className="flex-1 px-3 py-2 rounded-lg bg-input border border-border text-center"
                 min={0}
-                max={realSwipeCount}
+                max={originalSwipeCount}
               />
               <button
-                onClick={() => setTempSwipeValue(Math.min(realSwipeCount, tempSwipeValue + 1))}
+                onClick={() => setTempSwipeValue(Math.min(originalSwipeCount, tempSwipeValue + 1))}
                 className="p-2 rounded-lg bg-muted hover:bg-muted/80"
               >
                 <Plus className="w-4 h-4" />
@@ -701,7 +665,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => updatePublicSwipeCount(tempSwipeValue)}
+                onClick={() => updateSwipeCount(tempSwipeValue)}
                 className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 Save
@@ -713,17 +677,6 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
                 Cancel
               </button>
             </div>
-            {publicSwipeCount !== realSwipeCount && (
-              <button
-                onClick={() => {
-                  resetToRealSwipes()
-                  setShowSwipeEditor(false)
-                }}
-                className="w-full mt-2 py-2 rounded-lg text-sm text-primary hover:underline"
-              >
-                Reset to Real Swipes ({realSwipeCount})
-              </button>
-            )}
           </div>
         </div>
       )}
