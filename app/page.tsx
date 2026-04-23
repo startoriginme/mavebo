@@ -215,7 +215,7 @@ export default function HomePage() {
                   <feature.icon className={`w-10 h-10 ${feature.color} mx-auto mb-3`} />
                   <h3 className="text-lg font-semibold text-foreground mb-2">{feature.title}</h3>
                   <p className="text-sm text-muted-foreground">{feature.description}</p>
-                  {feature.highlight && (
+                  {feature.highlight && feature.title !== "Tinder Mode" && (
                     <div className="mt-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs">
                       <Sparkles className="w-3 h-3" />
                       <span>New</span>
@@ -232,7 +232,7 @@ export default function HomePage() {
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500/20 text-orange-500 text-sm font-medium mb-6">
               <Flame className="w-4 h-4" />
-              <span>Coming Soon</span>
+              <span>Available Now</span>
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               Tinder Mode 🔥
