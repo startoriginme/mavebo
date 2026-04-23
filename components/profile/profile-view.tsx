@@ -184,29 +184,24 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   function getCurrentPattern() {
     return PATTERNS[patternPreference] || ''
   }
-
-  async function calculateOriginsBalance() {
-    const maxBalance = uploadCount + (swipeCount * 0.5)
-    setMaxOriginsBalance(maxBalance)
-    
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('spent_origins, origins_balance')
-      .eq('id', profile.id)
-      .single()
-    
-    const spent = profileData?.spent_origins || 0
-    setSpentOrigins(spent)
-    
-    const currentBalance = maxBalance - spent
-    setOriginsBalance(currentBalance)
-    
-    if (isOwn) {
-      await supabase
-        .from('profiles')
-        .update({ origins_balance: currentBalance })
-        .eq('id', profile.id)
-    }
+async function calculateOriginsBalance() {
+  // НЕ пересчитываем баланс! Берем напрямую из БД
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('origins_balance, spent_origins')
+    .eq('id', profile.id)
+    .single()
+  
+  const currentBalance = profileData?.origins_balance || 0
+  setOriginsBalance(currentBalance)
+  
+  const spent = profileData?.spent_origins || 0
+  setSpentOrigins(spent)
+  
+  // Вычисляем maxBalance только для отображения
+  const maxBalance = uploadCount + (swipeCount * 0.5)
+  setMaxOriginsBalance(maxBalance)
+}
   }
 
   async function loadUserStats() {
