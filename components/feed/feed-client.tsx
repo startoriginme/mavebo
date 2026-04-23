@@ -23,6 +23,17 @@ const SWIPE_ACHIEVEMENTS = [
   { count: 500, title: "Photo God", icon: Trophy, color: "text-cyan-500", description: "Swiped 500 photos" },
 ]
 
+// Функция для форматирования чисел (1k, 1.6k и т.д.)
+function formatNumber(num: number): string {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M'
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'k'
+  }
+  return num.toString()
+}
+
 export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, userId }: Props) {
   const supabase = createClient()
   const [followingPhotos, setFollowingPhotos] = useState<Photo[]>(initialFollowingPhotos)
@@ -35,6 +46,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   const [page, setPage] = useState({ following: 1, all: 1 })
   const observerRef = useRef<IntersectionObserver | null>(null)
   const lastPhotoRef = useRef<HTMLDivElement | null>(null)
+  const loadedPhotoIdsRef = useRef<Set<string>>(new Set())
 
   // Tinder Mode states
   const [tinderMode, setTinderMode] = useState(false)
@@ -50,6 +62,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   const photos = showAll ? allPhotos : followingPhotos
   const isFollowingEmpty = followingPhotos.length === 0
   const hasPhotos = photos.length > 0
+  const totalPosts = showAll ? allPhotos.length : followingPhotos.length
 
   // Скрываем/показываем навигацию при входе/выходе из Tinder Mode
   useEffect(() => {
@@ -70,6 +83,17 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
       loadUserSwipeCount()
     }
   }, [userId])
+
+  // Инициализируем Set с ID уже загруженных фото
+  useEffect(() => {
+    loadedPhotoIdsRef.current.clear()
+    allPhotos.forEach(photo => loadedPhotoIdsRef.current.add(photo.id))
+  }, [allPhotos])
+
+  useEffect(() => {
+    loadedPhotoIdsRef.current.clear()
+    followingPhotos.forEach(photo => loadedPhotoIdsRef.current.add(photo.id))
+  }, [followingPhotos])
 
   async function loadUserSwipeCount() {
     const { data } = await supabase
@@ -190,8 +214,17 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
     try {
       const nextPage = currentPage + 1
       const limit = 20
+      const offset = nextPage * limit
       
       let newPhotos: Photo[] = []
+      
+      // Получаем актуальные лайки пользователя
+      const { data: likes } = await supabase
+        .from('likes')
+        .select('photo_id')
+        .eq('user_id', userId)
+      
+      const likedPhotoIds = new Set(likes?.map(l => l.photo_id) || [])
       
       if (showAll) {
         const { data, error } = await supabase
@@ -202,25 +235,22 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
           `)
           .eq('privacy', 'public')
           .order('created_at', { ascending: false })
-          .range(nextPage * limit, (nextPage + 1) * limit - 1)
+          .range(offset, offset + limit - 1)
         
         if (!error && data) {
-          const { data: likes } = await supabase
-            .from('likes')
-            .select('photo_id')
-            .eq('user_id', userId)
-          
-          const likedPhotoIds = new Set(likes?.map(l => l.photo_id) || [])
-          
           newPhotos = data.map(photo => ({
             ...photo,
             is_liked: likedPhotoIds.has(photo.id),
             likes_count: photo.likes_count || 0
           }))
           
-          setAllPhotos(prev => [...prev, ...newPhotos])
+          // Фильтруем дубликаты
+          const uniqueNewPhotos = newPhotos.filter(photo => !loadedPhotoIdsRef.current.has(photo.id))
+          uniqueNewPhotos.forEach(photo => loadedPhotoIdsRef.current.add(photo.id))
+          
+          setAllPhotos(prev => [...prev, ...uniqueNewPhotos])
           setPage(prev => ({ ...prev, all: nextPage }))
-          setHasMoreAll(newPhotos.length === limit)
+          setHasMoreAll(data.length === limit)
         }
       } else if (followingPhotos.length > 0) {
         const followedUserIds = [...new Set(followingPhotos.map(p => p.profile?.id).filter(Boolean))]
@@ -235,25 +265,22 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
             .eq('privacy', 'public')
             .in('user_id', followedUserIds)
             .order('created_at', { ascending: false })
-            .range(nextPage * limit, (nextPage + 1) * limit - 1)
+            .range(offset, offset + limit - 1)
           
           if (!error && data) {
-            const { data: likes } = await supabase
-              .from('likes')
-              .select('photo_id')
-              .eq('user_id', userId)
-            
-            const likedPhotoIds = new Set(likes?.map(l => l.photo_id) || [])
-            
             newPhotos = data.map(photo => ({
               ...photo,
               is_liked: likedPhotoIds.has(photo.id),
               likes_count: photo.likes_count || 0
             }))
             
-            setFollowingPhotos(prev => [...prev, ...newPhotos])
+            // Фильтруем дубликаты
+            const uniqueNewPhotos = newPhotos.filter(photo => !loadedPhotoIdsRef.current.has(photo.id))
+            uniqueNewPhotos.forEach(photo => loadedPhotoIdsRef.current.add(photo.id))
+            
+            setFollowingPhotos(prev => [...prev, ...uniqueNewPhotos])
             setPage(prev => ({ ...prev, following: nextPage }))
-            setHasMoreFollowing(newPhotos.length === limit)
+            setHasMoreFollowing(data.length === limit)
           }
         }
       }
@@ -262,7 +289,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
     } finally {
       setLoadingMore(false)
     }
-  }, [showAll, page, hasMoreAll, hasMoreFollowing, loadingMore, supabase, userId, followingPhotos])
+  }, [showAll, page, hasMoreAll, hasMoreFollowing, loadingMore, supabase, userId, followingPhotos, allPhotos])
 
   // Intersection observer for infinite scroll
   useEffect(() => {
@@ -293,7 +320,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
     const updater = (prev: Photo[]) =>
       prev.map((p) =>
         p.id === photo.id
-          ? { ...p, is_liked: !isLiked, likes_count: (p.likes_count ?? 0) + (isLiked ? -1 : 1) }
+          ? { ...p, is_liked: !isLiked, likes_count: Math.max(0, (p.likes_count ?? 0) + (isLiked ? -1 : 1)) }
           : p,
       )
     setFollowingPhotos(updater)
@@ -382,12 +409,12 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
               />
               
               {/* Индикатор свайпа */}
-              {dragOffset.x > 50 && (
+              if (dragOffset.x > 50) && (
                 <div className="absolute top-8 left-8 bg-green-500/80 backdrop-blur-sm rounded-lg px-4 py-2 transform -rotate-12">
                   <HeartIcon className="w-8 h-8 text-white" />
                 </div>
               )}
-              {dragOffset.x < -50 && (
+              if (dragOffset.x < -50) && (
                 <div className="absolute top-8 right-8 bg-red-500/80 backdrop-blur-sm rounded-lg px-4 py-2 transform rotate-12">
                   <X className="w-8 h-8 text-white" />
                 </div>
@@ -470,7 +497,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
               className="w-full px-4 py-2.5 bg-muted text-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors flex items-center justify-center gap-2"
             >
               <Globe className="w-4 h-4" />
-              Show all StartOrigin posts
+              Show all posts
             </button>
           </div>
         </div>
@@ -504,7 +531,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
               {showAll ? (
                 <>
                   <Globe className="w-3.5 h-3.5" />
-                  <span>All StartOrigin</span>
+                  <span>All</span>
                 </>
               ) : (
                 <>
@@ -516,7 +543,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
           )}
           {showAll && !isFollowingEmpty && (
             <span className="text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
-              {allPhotos.length} posts
+              {formatNumber(totalPosts)} posts
             </span>
           )}
         </div>
@@ -544,7 +571,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
         <div className="mb-4 p-3 bg-muted/30 rounded-xl flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Globe className="w-4 h-4" />
-            <span>Showing all public posts from StartOrigin</span>
+            <span>Showing all public posts</span>
           </div>
           <button
             onClick={toggleFeed}
@@ -588,7 +615,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
                 className="mt-3 text-sm text-primary hover:underline flex items-center justify-center gap-1"
               >
                 <Globe className="w-3.5 h-3.5" />
-                Browse all StartOrigin
+                Browse all posts
               </button>
             )}
             {showAll && !isFollowingEmpty && (
@@ -620,6 +647,13 @@ function PhotoCard({
   onOpen: () => void
   onOpenInNewTab: () => void
 }) {
+  // Функция для форматирования лайков
+  const formatLikes = (num: number) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
+    return num.toString()
+  }
+
   return (
     <div className="glass rounded-2xl overflow-hidden">
       <Link href={`/profile/${photo.profile?.username}`} className="flex items-center gap-2.5 px-4 py-3">
@@ -661,7 +695,7 @@ function PhotoCard({
               className={`w-5 h-5 transition-all ${photo.is_liked ? 'fill-red-500 text-red-500' : 'text-muted-foreground group-hover:text-red-400'}`}
             />
             <span className={`text-sm ${photo.is_liked ? 'text-red-500' : 'text-muted-foreground'}`}>
-              {photo.likes_count ?? 0}
+              {formatLikes(photo.likes_count ?? 0)}
             </span>
           </button>
           <button
