@@ -344,128 +344,128 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   }
 
   // Tinder Mode UI
-  if (tinderMode) {
-    const currentPhoto = tinderPhotos[currentPhotoIndex]
-    const rotate = dragOffset.x * 0.05
+ // Tinder Mode UI
+if (tinderMode) {
+  const currentPhoto = tinderPhotos[currentPhotoIndex]
+  const rotate = dragOffset.x * 0.05
 
-    if (!currentPhoto) return null
+  if (!currentPhoto) return null
 
-    return (
-      <main className="min-h-screen bg-gradient-to-br from-purple-900/20 via-background to-blue-900/20">
-        {/* Кнопка выхода */}
-        <div className="fixed top-4 right-4 z-50">
-          <button
-            onClick={exitTinderMode}
-            className="glass rounded-full p-3 hover:bg-primary/20 transition-all"
-          >
-            <X className="w-6 h-6" />
-          </button>
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-purple-900/20 via-background to-blue-900/20">
+      {/* Кнопка выхода */}
+      <div className="fixed top-4 right-4 z-50">
+        <button
+          onClick={exitTinderMode}
+          className="glass rounded-full p-3 hover:bg-primary/20 transition-all"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Счетчик свайпов */}
+      <div className="fixed top-4 left-4 z-50">
+        <div className="glass rounded-full px-4 py-2 flex items-center gap-2">
+          <Flame className="w-5 h-5 text-orange-500" />
+          <span className="font-bold">{swipeCount}</span>
         </div>
+      </div>
 
-        {/* Счетчик свайпов */}
-        <div className="fixed top-4 left-4 z-50">
-          <div className="glass rounded-full px-4 py-2 flex items-center gap-2">
-            <Flame className="w-5 h-5 text-orange-500" />
-            <span className="font-bold">{swipeCount}</span>
-          </div>
-        </div>
-
-        {/* Ачивка */}
-        {showAchievement && (
-          <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
-            <div className="glass rounded-2xl p-4 flex items-center gap-3">
-              <showAchievement.icon className={`w-8 h-8 ${showAchievement.color}`} />
-              <div>
-                <p className="font-bold text-foreground">Achievement Unlocked!</p>
-                <p className="text-sm text-muted-foreground">{showAchievement.title}</p>
-              </div>
+      {/* Ачивка */}
+      {showAchievement && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
+          <div className="glass rounded-2xl p-4 flex items-center gap-3">
+            <showAchievement.icon className={`w-8 h-8 ${showAchievement.color}`} />
+            <div>
+              <p className="font-bold text-foreground">Achievement Unlocked!</p>
+              <p className="text-sm text-muted-foreground">{showAchievement.title}</p>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Карточка для свайпа */}
-        <div className="flex items-center justify-center min-h-screen p-4">
+      {/* Карточка для свайпа */}
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <div
+          ref={cardRef}
+          className="relative w-full max-w-md aspect-[3/4] cursor-grab active:cursor-grabbing"
+          onMouseDown={handleDragStart}
+          onMouseMove={handleDragMove}
+          onMouseUp={handleDragEnd}
+          onTouchStart={handleDragStart}
+          onTouchMove={handleDragMove}
+          onTouchEnd={handleDragEnd}
+        >
           <div
-            ref={cardRef}
-            className="relative w-full max-w-md aspect-[3/4] cursor-grab active:cursor-grabbing"
-            onMouseDown={handleDragStart}
-            onMouseMove={handleDragMove}
-            onMouseUp={handleDragEnd}
-            onTouchStart={handleDragStart}
-            onTouchMove={handleDragMove}
-            onTouchEnd={handleDragEnd}
+            className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl transition-all"
+            style={{
+              transform: `translate(${dragOffset.x}px, ${dragOffset.y}px) rotate(${rotate}deg)`,
+              transition: isDragging ? 'none' : 'all 0.3s ease-out',
+            }}
           >
-            <div
-              className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl transition-all"
-              style={{
-                transform: `translate(${dragOffset.x}px, ${dragOffset.y}px) rotate(${rotate}deg)`,
-                transition: isDragging ? 'none' : 'all 0.3s ease-out',
-              }}
-            >
-              <img
-                src={currentPhoto.url}
-                alt={currentPhoto.name}
-                className="w-full h-full object-cover"
-              />
-              
-              {/* Индикатор свайпа */}
-              if (dragOffset.x > 50) && (
-                <div className="absolute top-8 left-8 bg-green-500/80 backdrop-blur-sm rounded-lg px-4 py-2 transform -rotate-12">
-                  <HeartIcon className="w-8 h-8 text-white" />
-                </div>
-              )}
-              if (dragOffset.x < -50) && (
-                <div className="absolute top-8 right-8 bg-red-500/80 backdrop-blur-sm rounded-lg px-4 py-2 transform rotate-12">
-                  <X className="w-8 h-8 text-white" />
-                </div>
-              )}
-              
-              {/* Информация о фото */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                <p className="text-white font-semibold text-lg">{currentPhoto.name}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  {currentPhoto.profile?.avatar_url && (
-                    <img
-                      src={currentPhoto.profile.avatar_url}
-                      alt=""
-                      className="w-6 h-6 rounded-full"
-                    />
-                  )}
-                  <p className="text-white/90 text-sm">@{currentPhoto.profile?.username}</p>
-                </div>
+            <img
+              src={currentPhoto.url}
+              alt={currentPhoto.name}
+              className="w-full h-full object-cover"
+            />
+            
+            {/* Индикатор свайпа */}
+            {dragOffset.x > 50 && (
+              <div className="absolute top-8 left-8 bg-green-500/80 backdrop-blur-sm rounded-lg px-4 py-2 transform -rotate-12">
+                <HeartIcon className="w-8 h-8 text-white" />
+              </div>
+            )}
+            {dragOffset.x < -50 && (
+              <div className="absolute top-8 right-8 bg-red-500/80 backdrop-blur-sm rounded-lg px-4 py-2 transform rotate-12">
+                <X className="w-8 h-8 text-white" />
+              </div>
+            )}
+            
+            {/* Информация о фото */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+              <p className="text-white font-semibold text-lg">{currentPhoto.name}</p>
+              <div className="flex items-center gap-2 mt-2">
+                {currentPhoto.profile?.avatar_url && (
+                  <img
+                    src={currentPhoto.profile.avatar_url}
+                    alt=""
+                    className="w-6 h-6 rounded-full"
+                  />
+                )}
+                <p className="text-white/90 text-sm">@{currentPhoto.profile?.username}</p>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Кнопки действий */}
-        <div className="fixed bottom-8 left-0 right-0 flex justify-center gap-8">
-          <button
-            onClick={() => handleSwipe('left')}
-            className="w-16 h-16 rounded-full bg-red-500/20 backdrop-blur-sm border border-red-500/50 flex items-center justify-center hover:scale-110 transition-all"
-          >
-            <X className="w-8 h-8 text-red-500" />
-          </button>
-          <button
-            onClick={() => handleSwipe('right')}
-            className="w-16 h-16 rounded-full bg-green-500/20 backdrop-blur-sm border border-green-500/50 flex items-center justify-center hover:scale-110 transition-all"
-          >
-            <HeartIcon className="w-8 h-8 text-green-500" />
-          </button>
-        </div>
+      {/* Кнопки действий */}
+      <div className="fixed bottom-8 left-0 right-0 flex justify-center gap-8">
+        <button
+          onClick={() => handleSwipe('left')}
+          className="w-16 h-16 rounded-full bg-red-500/20 backdrop-blur-sm border border-red-500/50 flex items-center justify-center hover:scale-110 transition-all"
+        >
+          <X className="w-8 h-8 text-red-500" />
+        </button>
+        <button
+          onClick={() => handleSwipe('right')}
+          className="w-16 h-16 rounded-full bg-green-500/20 backdrop-blur-sm border border-green-500/50 flex items-center justify-center hover:scale-110 transition-all"
+        >
+          <HeartIcon className="w-8 h-8 text-green-500" />
+        </button>
+      </div>
 
-        {/* Индикатор, что фото закончились */}
-        {currentPhotoIndex === tinderPhotos.length - 1 && (
-          <div className="fixed bottom-32 left-0 right-0 text-center">
-            <div className="glass rounded-full px-4 py-2 inline-block">
-              <p className="text-xs text-muted-foreground">You've seen all photos! Starting over...</p>
-            </div>
+      {/* Индикатор, что фото закончились */}
+      {currentPhotoIndex === tinderPhotos.length - 1 && (
+        <div className="fixed bottom-32 left-0 right-0 text-center">
+          <div className="glass rounded-full px-4 py-2 inline-block">
+            <p className="text-xs text-muted-foreground">You've seen all photos! Starting over...</p>
           </div>
-        )}
-      </main>
-    )
-  }
-
+        </div>
+      )}
+    </main>
+  )
+}
   // Empty state with option to show all feed
   if (isFollowingEmpty && !showAll) {
     return (
