@@ -76,9 +76,7 @@ export default function SettingsPage() {
   // Leaderboard data
   const [leaderboardData, setLeaderboardData] = useState({
     photos: [] as any[],
-    swipes: [] as any[],
-    origins: [] as any[],
-    followers: [] as any[]
+    origins: [] as any[]
   })
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false)
 
@@ -187,13 +185,6 @@ export default function SettingsPage() {
         .order('photo_count', { ascending: false })
         .limit(5)
       
-      // Топ по свайпам
-      const { data: swipesTop } = await supabase
-        .from('profiles')
-        .select('id, name, username, avatar_url, real_swipe_count')
-        .order('real_swipe_count', { ascending: false })
-        .limit(5)
-      
       // Топ по Origins
       const { data: originsTop } = await supabase
         .from('profiles')
@@ -201,18 +192,9 @@ export default function SettingsPage() {
         .order('origins_balance', { ascending: false })
         .limit(5)
       
-      // Топ по подписчикам
-      const { data: followersTop } = await supabase
-        .from('profiles')
-        .select('id, name, username, avatar_url, followers_count')
-        .order('followers_count', { ascending: false })
-        .limit(5)
-      
       setLeaderboardData({
         photos: photosTop || [],
-        swipes: swipesTop || [],
-        origins: originsTop || [],
-        followers: followersTop || []
+        origins: originsTop || []
       })
     } catch (error) {
       console.error('Error loading leaderboard:', error)
@@ -786,40 +768,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Top by Swipes */}
-                  <div className="mb-6">
-                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <Flame className="w-4 h-4 text-orange-500" />
-                      Most Swipes
-                    </h3>
-                    <div className="space-y-2">
-                      {leaderboardData.swipes.map((user, idx) => (
-                        <div key={user.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                          <div className="flex items-center gap-3">
-                            <span className="w-6 text-sm font-bold text-yellow-500">#{idx + 1}</span>
-                            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
-                              {user.avatar_url ? (
-                                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs">
-                                  {user.name?.[0] || '?'}
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium">{user.name}</p>
-                              <p className="text-xs text-muted-foreground">@{user.username}</p>
-                            </div>
-                          </div>
-                          <span className="text-sm font-semibold">{user.real_swipe_count || 0} swipes</span>
-                        </div>
-                      ))}
-                      {leaderboardData.swipes.length === 0 && (
-                        <p className="text-center text-xs text-muted-foreground py-4">No data yet</p>
-                      )}
-                    </div>
-                  </div>
-
                   {/* Top by Origins */}
                   <div className="mb-6">
                     <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -849,40 +797,6 @@ export default function SettingsPage() {
                         </div>
                       ))}
                       {leaderboardData.origins.length === 0 && (
-                        <p className="text-center text-xs text-muted-foreground py-4">No data yet</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Top by Followers */}
-                  <div className="mb-6">
-                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <Users className="w-4 h-4 text-blue-500" />
-                      Most Followers
-                    </h3>
-                    <div className="space-y-2">
-                      {leaderboardData.followers.map((user, idx) => (
-                        <div key={user.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                          <div className="flex items-center gap-3">
-                            <span className="w-6 text-sm font-bold text-yellow-500">#{idx + 1}</span>
-                            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
-                              {user.avatar_url ? (
-                                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs">
-                                  {user.name?.[0] || '?'}
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium">{user.name}</p>
-                              <p className="text-xs text-muted-foreground">@{user.username}</p>
-                            </div>
-                          </div>
-                          <span className="text-sm font-semibold">{user.followers_count || 0} followers</span>
-                        </div>
-                      ))}
-                      {leaderboardData.followers.length === 0 && (
                         <p className="text-center text-xs text-muted-foreground py-4">No data yet</p>
                       )}
                     </div>
