@@ -1,199 +1,273 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile, Photo, BadgeType } from '@/lib/types'
-import { UserPlus, UserCheck, Images, BadgeCheck, Snowflake, Monitor, Star, Settings, Trophy, Flame, Camera, Sparkles, X, Search, Upload, Eye, EyeOff, Edit2, Minus, Plus, Coins, Glasses, Crown, Diamond, Heart, Award, ShoppingCart, ShoppingBag, Zap } from 'lucide-react'
-import PhotoViewer from '@/components/photo-viewer'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X, Star, Computer, Snowflake, BadgeCheck, Palette, Trophy, ShoppingCart, Zap, GripVertical, Eye, EyeOff, Crown, Diamond, Heart, Award, Sparkles, Flame, TrendingUp } from 'lucide-react'
 
-interface Props {
-  profile: Profile
-  photos: Photo[]
-  isOwn: boolean
-  currentUserId: string | null
-}
-
-const BADGE_CONFIG: Record<BadgeType, { icon: React.ElementType; color: string; label: string }> = {
-  verified: { icon: BadgeCheck, color: 'text-blue-500', label: 'Verified' },
-  snowflake: { icon: Snowflake, color: 'text-cyan-400', label: 'Snowflake' },
-  computer: { icon: Monitor, color: 'text-violet-500', label: 'Computer' },
-  star: { icon: Star, color: 'text-amber-400', label: 'Star' },
-  crown: { icon: Crown, color: 'text-yellow-500', label: 'Crown' },
-  diamond: { icon: Diamond, color: 'text-sky-400', label: 'Diamond' },
-  heart: { icon: Heart, color: 'text-pink-500', label: 'Heart' },
-  award: { icon: Award, color: 'text-emerald-500', label: 'Award' },
-}
-
-// Ачивки за свайпы
-const SWIPE_ACHIEVEMENTS = [
-  { count: 10, title: "Photo Explorer", icon: Camera, color: "text-green-500", description: "Swiped 10 photos" },
-  { count: 30, title: "Photo Hunter", icon: Search, color: "text-blue-500", description: "Swiped 30 photos" },
-  { count: 60, title: "Photo Master", icon: Star, color: "text-purple-500", description: "Swiped 60 photos" },
-  { count: 120, title: "Photo Legend", icon: Flame, color: "text-orange-500", description: "Swiped 120 photos" },
-  { count: 250, title: "Photo Guru", icon: Sparkles, color: "text-yellow-500", description: "Swiped 250 photos" },
-  { count: 500, title: "Photo God", icon: Trophy, color: "text-cyan-500", description: "Swiped 500 photos" },
-]
-
-// Ачивки за загруженные фотки
-const UPLOAD_ACHIEVEMENTS = [
-  { count: 1, title: "First Step", icon: Upload, color: "text-gray-500", description: "Uploaded first photo" },
-  { count: 5, title: "Getting Started", icon: Camera, color: "text-green-500", description: "Uploaded 5 photos" },
-  { count: 10, title: "Photo Enthusiast", icon: Camera, color: "text-green-500", description: "Uploaded 10 photos" },
-  { count: 15, title: "Shutterbug", icon: Camera, color: "text-emerald-500", description: "Uploaded 15 photos" },
-  { count: 20, title: "Getting Serious", icon: Flame, color: "text-orange-500", description: "Uploaded 20 photos" },
-  { count: 25, title: "Dedicated", icon: Flame, color: "text-orange-500", description: "Uploaded 25 photos" },
-  { count: 30, title: "Photography Addict", icon: Star, color: "text-purple-500", description: "Uploaded 30 photos" },
-  { count: 35, title: "Photo Lover", icon: Star, color: "text-purple-500", description: "Uploaded 35 photos" },
-  { count: 40, title: "Creative Eye", icon: Star, color: "text-purple-500", description: "Uploaded 40 photos" },
-  { count: 45, title: "Visual Artist", icon: Star, color: "text-indigo-500", description: "Uploaded 45 photos" },
-  { count: 50, title: "Photography Pro", icon: Trophy, color: "text-yellow-500", description: "Uploaded 50 photos" },
-  { count: 55, title: "Expert", icon: Trophy, color: "text-yellow-500", description: "Uploaded 55 photos" },
-  { count: 60, title: "Master Photographer", icon: Trophy, color: "text-yellow-500", description: "Uploaded 60 photos" },
-  { count: 65, title: "Visionary", icon: Trophy, color: "text-amber-500", description: "Uploaded 65 photos" },
-  { count: 70, title: "Photo Virtuoso", icon: Trophy, color: "text-amber-500", description: "Uploaded 70 photos" },
-  { count: 75, title: "Artistic Soul", icon: Sparkles, color: "text-pink-500", description: "Uploaded 75 photos" },
-  { count: 80, title: "Photo Legend", icon: Sparkles, color: "text-pink-500", description: "Uploaded 80 photos" },
-  { count: 85, title: "Iconic", icon: Sparkles, color: "text-rose-500", description: "Uploaded 85 photos" },
-  { count: 90, title: "Masterpiece Creator", icon: Sparkles, color: "text-rose-500", description: "Uploaded 90 photos" },
-  { count: 95, title: "Photography Guru", icon: Trophy, color: "text-purple-500", description: "Uploaded 95 photos" },
-  { count: 100, title: "Photo God", icon: Trophy, color: "text-cyan-500", description: "Uploaded 100 photos" },
-]
-
-// Ачивки из магазина
-const SHOP_ACHIEVEMENTS = [
-  { title: "Shopkeepers' Favorite", icon: ShoppingCart, color: "text-purple-500", description: "Spent 500 Origins in shop" },
-  { title: "Buyer", icon: ShoppingBag, color: "text-green-500", description: "Made first purchase" },
-  { title: "Shopping", icon: Zap, color: "text-yellow-500", description: "Bought 3 items" },
-]
-
-// Секретные ачивки
-const SECRET_ACHIEVEMENTS = [
-  { title: "Secret Agent: 1st Quest", icon: Glasses, color: "text-purple-500", description: "Completed the first secret quest" },
-]
-
-type Achievement = {
-  id: string
-  user_id: string
-  achievement_type: string
-  achievement_name: string
-  achieved_at: string
-}
-
-// Theme configurations for the profile container only
-const THEMES: Record<string, { bg: string; text: string }> = {
-  default: { bg: 'bg-white dark:bg-gray-900', text: 'text-black dark:text-white' },
-  black: { bg: 'bg-black', text: 'text-white' },
-  pink: { bg: 'bg-pink-100', text: 'text-pink-900' },
-  gray: { bg: 'bg-gray-300', text: 'text-gray-800' },
-  green: { bg: 'bg-green-100', text: 'text-green-900' },
-  blue: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-900 dark:text-blue-100' },
-  purple: { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-900 dark:text-purple-100' },
-  orange: { bg: 'bg-orange-100 dark:bg-orange-900', text: 'text-orange-900 dark:text-orange-100' },
-  red: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-900 dark:text-red-100' },
-}
-
-// Pattern configurations
-const PATTERNS: Record<string, string> = {
-  none: '',
-  circles: 'bg-[radial-gradient(circle_at_center,_#999_1px,_transparent_1px)] bg-[length:20px_20px]',
-  triangles: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%20d%3D%22M10%200L20%2017.32H0L10%200z%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]',
-  squares: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Crect%20width%3D%228%22%20height%3D%228%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]',
-  flowers: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210%22%20r%3D%223%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%223%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2217%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%2F%3E%3Ccircle%20cx%3D%223%22%20cy%3D%2210%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2210%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]',
-  hearts: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%20d%3D%22M10%2018l-1.5-1.4C4.5%2012.8%202%2010.5%202%207.5%202%205%204%203%206.5%203c1.5%200%202.9.8%203.5%202.1.6-1.3%202-2.1%203.5-2.1C16%203%2018%205%2018%207.5c0%203-2.5%205.3-6.5%209.1L10%2018z%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]',
-  stars: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpolygon%20fill%3D%22%23999%22%20fill-opacity%3D%220.15%22%20points%3D%2210%200%2013%207%2020%207%2015%2011%2017%2018%2010%2014%203%2018%205%2011%200%207%207%207%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]',
-}
-
-export default function ProfileView({ profile, photos, isOwn, currentUserId }: Props) {
+export default function SettingsPage() {
   const supabase = createClient()
-  const [following, setFollowing] = useState(profile.is_following ?? false)
-  const [followersCount, setFollowersCount] = useState(profile.followers_count ?? 0)
-  const [viewer, setViewer] = useState<Photo | null>(null)
-  const [swipeCount, setSwipeCount] = useState(0)
-  const [originalSwipeCount, setOriginalSwipeCount] = useState(0)
-  const [uploadCount, setUploadCount] = useState(photos.length)
-  const [achievements, setAchievements] = useState<Achievement[]>([])
-  const [showSwipeEditor, setShowSwipeEditor] = useState(false)
-  const [tempSwipeValue, setTempSwipeValue] = useState(0)
-  const [hideSwipeCount, setHideSwipeCount] = useState(false)
-  const [hiddenAchievements, setHiddenAchievements] = useState<Set<string>>(new Set())
-  const [showHiddenAchievements, setShowHiddenAchievements] = useState(false)
+  const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [name, setName] = useState('')
+  const [username, setUsername] = useState('')
+  const [bio, setBio] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  // Modal states
+  const [shopModalOpen, setShopModalOpen] = useState(false)
+  const [originsModalOpen, setOriginsModalOpen] = useState(false)
+  const [secretModalOpen, setSecretModalOpen] = useState(false)
+  const [decorationsModalOpen, setDecorationsModalOpen] = useState(false)
+  const [badgesModalOpen, setBadgesModalOpen] = useState(false)
+  const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false)
+  
+  // Shop modal state
+  const [shopUnlocked, setShopUnlocked] = useState(false)
+  const [purchasing, setPurchasing] = useState<string | null>(null)
+  
+  // Shop dialog messages for locked shop (only shows once)
+  const [shopDialogStep, setShopDialogStep] = useState(0)
+  const shopDialogMessages = [
+    "No entry.",
+    "Go away.",
+    "Closed! Forbidden!",
+    "Does the word \"closed\" means something to you?",
+    "Okay. Here's the hint.",
+    "There are 2 options: or the shop isn't ready yet, or you don't have enough Origins to enter.",
+    "Now go away. The shop will open when you're ready. When you're prepared. Now you actually aren't.",
+    "(bye!)"
+  ]
+  
+  // Secret quest state
+  const [secretCompleted, setSecretCompleted] = useState(false)
+  const [secretButtonFound, setSecretButtonFound] = useState(false)
+  const [showSecretHint, setShowSecretHint] = useState(false)
+  
+  // Origins balance
   const [originsBalance, setOriginsBalance] = useState(0)
   const [maxOriginsBalance, setMaxOriginsBalance] = useState(0)
   const [spentOrigins, setSpentOrigins] = useState(0)
+  const [uploadCount, setUploadCount] = useState(0)
+  const [swipeCount, setSwipeCount] = useState(0)
   
-  // Badge settings
+  // Purchased items
+  const [purchasedBadges, setPurchasedBadges] = useState<string[]>([])
+  const [unlockedThemes, setUnlockedThemes] = useState<string[]>(['default', 'pink', 'gray', 'green'])
+  const [purchasedAchievements, setPurchasedAchievements] = useState<string[]>([])
+  
+  // Badges management
   const [hiddenBadges, setHiddenBadges] = useState<string[]>([])
   const [badgesOrder, setBadgesOrder] = useState<string[]>(['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award'])
-  
-  // Decoration state for profile container only
-  const [themePreference, setThemePreference] = useState<string>('default')
-  const [patternPreference, setPatternPreference] = useState<string>('none')
+  const [draggedBadge, setDraggedBadge] = useState<string | null>(null)
 
-  // Загружаем данные пользователя
-  useEffect(() => {
-    loadUserStats()
-    loadAchievements()
-    loadUserSettings()
-    loadDecorations()
-    loadBadgeSettings()
-  }, [profile.id])
+  // Decoration state
+  const [selectedTheme, setSelectedTheme] = useState<string>('default')
+  const [selectedPattern, setSelectedPattern] = useState<string>('none')
 
-  // Проверяем и добавляем ачивки за фото
+  // Leaderboard data
+  const [leaderboardData, setLeaderboardData] = useState({
+    photos: [] as any[],
+    swipes: [] as any[],
+    origins: [] as any[],
+    followers: [] as any[]
+  })
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false)
+
+  // Badge config for display
+  const BADGE_DISPLAY: Record<string, { name: string; icon: React.ElementType; color: string; price?: number; description?: string }> = {
+    star: { name: 'Star Badge', icon: Star, color: 'text-amber-400', price: 450, description: 'A shining star badge' },
+    computer: { name: 'Computer Badge', icon: Computer, color: 'text-violet-500', price: 350, description: 'Tech enthusiast badge' },
+    snowflake: { name: 'Snowflake Badge', icon: Snowflake, color: 'text-cyan-400', price: 2000, description: 'Rare snowflake badge' },
+    verified: { name: 'Verified Badge', icon: BadgeCheck, color: 'text-blue-500', price: 9999, description: 'Official verified badge' },
+    crown: { name: 'Crown Badge', icon: Crown, color: 'text-yellow-500', price: 3000, description: 'Royal crown badge' },
+    diamond: { name: 'Diamond Badge', icon: Diamond, color: 'text-sky-400', price: 5000, description: 'Rare diamond badge' },
+    heart: { name: 'Heart Badge', icon: Heart, color: 'text-pink-500', price: 800, description: 'Loving heart badge' },
+    award: { name: 'Award Badge', icon: Award, color: 'text-emerald-500', price: 1200, description: 'Prestigious award badge' },
+    sparkles: { name: 'Sparkle Badge', icon: Sparkles, color: 'text-purple-400', price: 1500, description: 'Magical sparkle badge' },
+  }
+
+  // Theme options (новые темы закрыты по умолчанию)
+  const themes = [
+    { id: 'default', name: 'Default', bg: 'bg-white dark:bg-gray-900', text: 'text-black dark:text-white', preview: 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900', disabled: false },
+    { id: 'pink', name: 'Pink', bg: 'bg-pink-100 dark:bg-pink-900', text: 'text-pink-900 dark:text-pink-100', preview: 'bg-pink-300 dark:bg-pink-700', disabled: false },
+    { id: 'gray', name: 'Gray', bg: 'bg-gray-300 dark:bg-gray-700', text: 'text-gray-800 dark:text-gray-200', preview: 'bg-gray-400 dark:bg-gray-600', disabled: false },
+    { id: 'green', name: 'Green', bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-900 dark:text-green-100', preview: 'bg-green-300 dark:bg-green-700', disabled: false },
+    { id: 'black', name: 'Black', bg: 'bg-black', text: 'text-white', preview: 'bg-black', disabled: !unlockedThemes.includes('black') },
+    { id: 'blue', name: 'Blue', bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-900 dark:text-blue-100', preview: 'bg-blue-300 dark:bg-blue-700', disabled: !unlockedThemes.includes('blue') },
+    { id: 'purple', name: 'Purple', bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-900 dark:text-purple-100', preview: 'bg-purple-300 dark:bg-purple-700', disabled: !unlockedThemes.includes('purple') },
+    { id: 'orange', name: 'Orange', bg: 'bg-orange-100 dark:bg-orange-900', text: 'text-orange-900 dark:text-orange-100', preview: 'bg-orange-300 dark:bg-orange-700', disabled: !unlockedThemes.includes('orange') },
+    { id: 'red', name: 'Red', bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-900 dark:text-red-100', preview: 'bg-red-300 dark:bg-red-700', disabled: !unlockedThemes.includes('red') },
+  ]
+
+  // Pattern options
+  const patterns = [
+    { id: 'none', name: 'None', preview: 'bg-transparent' },
+    { id: 'circles', name: 'Circles', preview: 'bg-[radial-gradient(circle_at_center,_#999_1px,_transparent_1px)] bg-[length:20px_20px]' },
+    { id: 'triangles', name: 'Triangles', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%20d%3D%22M10%200L20%2017.32H0L10%200z%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
+    { id: 'squares', name: 'Squares', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
+    { id: 'flowers', name: 'Flowers', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210%22%20r%3D%223%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%223%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2217%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%223%22%20cy%3D%2210%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2210%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
+    { id: 'hearts', name: 'Hearts', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%20d%3D%22M10%2018l-1.5-1.4C4.5%2012.8%202%2010.5%202%207.5%202%205%204%203%206.5%203c1.5%200%202.9.8%203.5%202.1.6-1.3%202-2.1%203.5-2.1C16%203%2018%205%2018%207.5c0%203-2.5%205.3-6.5%209.1L10%2018z%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
+    { id: 'stars', name: 'Stars', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpolygon%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%20points%3D%2210%200%2013%207%2020%207%2015%2011%2017%2018%2010%2014%203%2018%205%2011%200%207%207%207%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
+  ]
+
+  // Shop items (расширенные)
+  const shopItems = {
+    badges: [
+      { id: 'star', name: 'Star Badge', icon: Star, price: 450, color: 'text-amber-400', description: 'A shining star badge' },
+      { id: 'computer', name: 'Computer Badge', icon: Computer, price: 350, color: 'text-violet-500', description: 'Tech enthusiast badge' },
+      { id: 'heart', name: 'Heart Badge', icon: Heart, price: 800, color: 'text-pink-500', description: 'Loving heart badge' },
+      { id: 'crown', name: 'Crown Badge', icon: Crown, price: 3000, color: 'text-yellow-500', description: 'Royal crown badge' },
+      { id: 'diamond', name: 'Diamond Badge', icon: Diamond, price: 5000, color: 'text-sky-400', description: 'Rare diamond badge' },
+      { id: 'award', name: 'Award Badge', icon: Award, price: 1200, color: 'text-emerald-500', description: 'Prestigious award badge' },
+      { id: 'sparkles', name: 'Sparkle Badge', icon: Sparkles, price: 1500, color: 'text-purple-400', description: 'Magical sparkle badge' },
+      { id: 'snowflake', name: 'Snowflake Badge', icon: Snowflake, price: 2000, color: 'text-cyan-400', description: 'Rare snowflake badge' },
+      { id: 'verified', name: 'Verified Badge', icon: BadgeCheck, price: 9999, color: 'text-blue-500', description: 'Coming Soon!', disabled: true },
+    ],
+    themes: [
+      { id: 'black', name: 'Black Theme', icon: Palette, price: 500, description: 'Unlock black theme for your profile' },
+      { id: 'blue', name: 'Blue Theme', icon: Palette, price: 300, description: 'Unlock blue theme for your profile' },
+      { id: 'purple', name: 'Purple Theme', icon: Palette, price: 300, description: 'Unlock purple theme for your profile' },
+      { id: 'orange', name: 'Orange Theme', icon: Palette, price: 300, description: 'Unlock orange theme for your profile' },
+      { id: 'red', name: 'Red Theme', icon: Palette, price: 300, description: 'Unlock red theme for your profile' },
+    ],
+    achievements: [
+      { id: 'shopkeeper', name: "Shopkeepers' Favorite", icon: ShoppingCart, price: 500, description: 'Spent 500 Origins in shop' },
+      { id: 'buyer', name: 'Buyer', icon: ShoppingBag, price: 200, description: 'Made first purchase' },
+      { id: 'shopping', name: 'Shopping', icon: Zap, price: 400, description: 'Bought 3 items' },
+    ]
+  }
+
   useEffect(() => {
-    if (uploadCount > 0) {
-      checkAndAddUploadAchievements()
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      setUserId(user.id)
+      
+      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (data) {
+        setName(data.name ?? '')
+        setUsername(data.username ?? '')
+        setBio(data.bio ?? '')
+        setAvatarUrl(data.avatar_url)
+        setPurchasedBadges(data.purchased_badges || [])
+        setUnlockedThemes(data.unlocked_themes || ['default', 'pink', 'gray', 'green'])
+        setPurchasedAchievements(data.purchased_achievements || [])
+        setSelectedTheme(data.theme_preference || 'default')
+        setSelectedPattern(data.pattern_preference || 'none')
+        setShopUnlocked(data.shop_unlocked || false)
+        setSpentOrigins(data.spent_origins || 0)
+        setHiddenBadges(data.hidden_badges || [])
+        setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award'])
+      }
+      
+      await loadOriginsBalance(user.id)
+      await checkSecretAchievement(user.id)
+      await loadDecorations()
     }
-  }, [uploadCount])
+    load()
+  }, [])
 
-  // Пересчитываем баланс Origins при изменении свайпов и фоток
-  useEffect(() => {
-    calculateOriginsBalance()
-  }, [swipeCount, uploadCount])
-
-  async function loadBadgeSettings() {
-    const { data } = await supabase
-      .from('profiles')
-      .select('hidden_badges, badges_order')
-      .eq('id', profile.id)
-      .single()
+  async function loadLeaderboard() {
+    setLoadingLeaderboard(true)
     
-    if (data) {
-      setHiddenBadges(data.hidden_badges || [])
-      setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award'])
+    try {
+      // Топ по фоткам
+      const { data: photosTop } = await supabase
+        .from('profiles')
+        .select('id, name, username, avatar_url, photo_count')
+        .order('photo_count', { ascending: false })
+        .limit(5)
+      
+      // Топ по свайпам
+      const { data: swipesTop } = await supabase
+        .from('profiles')
+        .select('id, name, username, avatar_url, real_swipe_count')
+        .order('real_swipe_count', { ascending: false })
+        .limit(5)
+      
+      // Топ по Origins
+      const { data: originsTop } = await supabase
+        .from('profiles')
+        .select('id, name, username, avatar_url, origins_balance')
+        .order('origins_balance', { ascending: false })
+        .limit(5)
+      
+      // Топ по подписчикам
+      const { data: followersTop } = await supabase
+        .from('profiles')
+        .select('id, name, username, avatar_url, followers_count')
+        .order('followers_count', { ascending: false })
+        .limit(5)
+      
+      setLeaderboardData({
+        photos: photosTop || [],
+        swipes: swipesTop || [],
+        origins: originsTop || [],
+        followers: followersTop || []
+      })
+    } catch (error) {
+      console.error('Error loading leaderboard:', error)
+    } finally {
+      setLoadingLeaderboard(false)
     }
   }
 
   async function loadDecorations() {
+    if (!userId) return
     const { data } = await supabase
       .from('profiles')
       .select('theme_preference, pattern_preference')
-      .eq('id', profile.id)
-      .single()
+      .eq('id', userId)
+      .maybeSingle()
     
     if (data) {
-      setThemePreference(data.theme_preference || 'default')
-      setPatternPreference(data.pattern_preference || 'none')
+      setSelectedTheme(data.theme_preference || 'default')
+      setSelectedPattern(data.pattern_preference || 'none')
     }
   }
 
-  function getCurrentTheme() {
-    return THEMES[themePreference] || THEMES.default
-  }
-
-  function getCurrentPattern() {
-    return PATTERNS[patternPreference] || ''
-  }
-
-  async function calculateOriginsBalance() {
-    const maxBalance = uploadCount + (swipeCount * 0.5)
-    setMaxOriginsBalance(maxBalance)
+  async function saveThemeAndPattern(themeId: string, patternId: string) {
+    setSelectedTheme(themeId)
+    setSelectedPattern(patternId)
     
+    await supabase
+      .from('profiles')
+      .update({
+        theme_preference: themeId,
+        pattern_preference: patternId
+      })
+      .eq('id', userId)
+  }
+
+  async function loadOriginsBalance(userId: string) {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('spent_origins, origins_balance')
-      .eq('id', profile.id)
+      .select('swipe_count, origins_balance, spent_origins')
+      .eq('id', userId)
       .single()
+    
+    const swipeCountValue = profileData?.swipe_count || 0
+    setSwipeCount(swipeCountValue)
+    
+    const { count: photoCount } = await supabase
+      .from('photos')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+    
+    const photoCountValue = photoCount || 0
+    setUploadCount(photoCountValue)
+    
+    const maxBalance = photoCountValue + (swipeCountValue * 0.5)
+    setMaxOriginsBalance(maxBalance)
     
     const spent = profileData?.spent_origins || 0
     setSpentOrigins(spent)
@@ -201,592 +275,1106 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     const currentBalance = maxBalance - spent
     setOriginsBalance(currentBalance)
     
-    if (isOwn) {
-      await supabase
-        .from('profiles')
-        .update({ origins_balance: currentBalance })
-        .eq('id', profile.id)
-    }
-  }
-
-  async function loadUserStats() {
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('swipe_count, origins_balance, purchased_badges, spent_origins, purchased_achievements')
-      .eq('id', profile.id)
-      .single()
-    
-    if (profileData) {
-      const count = profileData.swipe_count || 0
-      setSwipeCount(count)
-      setOriginalSwipeCount(count)
-      setTempSwipeValue(count)
-      if (profileData.origins_balance !== undefined) {
-        setOriginsBalance(profileData.origins_balance)
-      }
-      if (profileData.spent_origins !== undefined) {
-        setSpentOrigins(profileData.spent_origins)
-      }
-    }
-    
-    const { count } = await supabase
-      .from('photos')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', profile.id)
-    
-    setUploadCount(count || 0)
-  }
-
-  async function loadUserSettings() {
-    const { data: swipeData } = await supabase
-      .from('user_settings')
-      .select('hide_swipe_count')
-      .eq('user_id', profile.id)
-      .maybeSingle()
-    
-    if (swipeData) {
-      setHideSwipeCount(swipeData.hide_swipe_count || false)
-    }
-    
-    const { data: hiddenData } = await supabase
-      .from('user_settings')
-      .select('hidden_achievements')
-      .eq('user_id', profile.id)
-      .maybeSingle()
-    
-    if (hiddenData?.hidden_achievements) {
-      setHiddenAchievements(new Set(hiddenData.hidden_achievements))
-    }
-  }
-
-  async function toggleHideSwipeCount() {
-    const newValue = !hideSwipeCount
-    setHideSwipeCount(newValue)
-    
     await supabase
-      .from('user_settings')
-      .upsert({
-        user_id: profile.id,
-        hide_swipe_count: newValue
-      }, { onConflict: 'user_id' })
+      .from('profiles')
+      .update({ origins_balance: currentBalance })
+      .eq('id', userId)
   }
 
-  async function toggleHideAchievement(achievementId: string) {
-    const newHiddenSet = new Set(hiddenAchievements)
+  async function saveBadgesSettings() {
+    await supabase
+      .from('profiles')
+      .update({
+        hidden_badges: hiddenBadges,
+        badges_order: badgesOrder
+      })
+      .eq('id', userId)
     
-    if (newHiddenSet.has(achievementId)) {
-      newHiddenSet.delete(achievementId)
+    alert('Badge settings saved!')
+    setBadgesModalOpen(false)
+  }
+
+  function toggleHideBadge(badgeId: string) {
+    if (hiddenBadges.includes(badgeId)) {
+      setHiddenBadges(hiddenBadges.filter(id => id !== badgeId))
     } else {
-      newHiddenSet.add(achievementId)
+      setHiddenBadges([...hiddenBadges, badgeId])
     }
-    
-    setHiddenAchievements(newHiddenSet)
+  }
+
+  function moveBadgeUp(badgeId: string) {
+    const index = badgesOrder.indexOf(badgeId)
+    if (index > 0) {
+      const newOrder = [...badgesOrder]
+      ;[newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]]
+      setBadgesOrder(newOrder)
+    }
+  }
+
+  function moveBadgeDown(badgeId: string) {
+    const index = badgesOrder.indexOf(badgeId)
+    if (index < badgesOrder.length - 1) {
+      const newOrder = [...badgesOrder]
+      ;[newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]]
+      setBadgesOrder(newOrder)
+    }
+  }
+
+  function handleDragStart(badgeId: string) {
+    setDraggedBadge(badgeId)
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault()
+  }
+
+  function handleDrop(targetBadgeId: string) {
+    if (draggedBadge && draggedBadge !== targetBadgeId) {
+      const draggedIndex = badgesOrder.indexOf(draggedBadge)
+      const targetIndex = badgesOrder.indexOf(targetBadgeId)
+      
+      if (draggedIndex !== -1 && targetIndex !== -1) {
+        const newOrder = [...badgesOrder]
+        newOrder.splice(draggedIndex, 1)
+        newOrder.splice(targetIndex, 0, draggedBadge)
+        setBadgesOrder(newOrder)
+      }
+    }
+    setDraggedBadge(null)
+  }
+
+  async function unlockShopPermanently() {
+    if (shopUnlocked) return
     
     await supabase
-      .from('user_settings')
-      .upsert({
-        user_id: profile.id,
-        hidden_achievements: Array.from(newHiddenSet)
-      }, { onConflict: 'user_id' })
-  }
-
-  async function updateSwipeCount(newCount: number) {
-    if (newCount > originalSwipeCount) {
-      alert(`You cannot exceed your actual swipe count (${originalSwipeCount})`)
-      return false
-    }
-    
-    if (newCount < 0) {
-      alert("Swipe count cannot be negative")
-      return false
-    }
-    
-    const { error } = await supabase
       .from('profiles')
-      .update({ swipe_count: newCount })
-      .eq('id', profile.id)
+      .update({ shop_unlocked: true })
+      .eq('id', userId)
     
-    if (!error) {
-      setSwipeCount(newCount)
-      setShowSwipeEditor(false)
-      await checkAndAddSwipeAchievements(newCount)
-      return true
-    }
-    return false
+    setShopUnlocked(true)
   }
 
-  async function checkAndAddSwipeAchievements(currentCount: number) {
-    for (const ach of SWIPE_ACHIEVEMENTS) {
-      if (currentCount >= ach.count) {
-        const hasAchievement = achievements.some(a => a.achievement_name === ach.title)
-        if (!hasAchievement) {
-          const { error } = await supabase
-            .from('achievements')
-            .insert({
-              user_id: profile.id,
-              achievement_type: 'swipe',
-              achievement_name: ach.title,
-              achieved_at: new Date().toISOString()
-            })
-          
-          if (!error) {
-            setAchievements(prev => [...prev, {
-              id: Date.now().toString(),
-              user_id: profile.id,
-              achievement_type: 'swipe',
-              achievement_name: ach.title,
-              achieved_at: new Date().toISOString()
-            }])
-          }
-        }
-      }
-    }
-  }
-
-  async function checkAndAddUploadAchievements() {
-    for (const ach of UPLOAD_ACHIEVEMENTS) {
-      if (uploadCount >= ach.count) {
-        const hasAchievement = achievements.some(a => a.achievement_name === ach.title)
-        if (!hasAchievement) {
-          const { error } = await supabase
-            .from('achievements')
-            .insert({
-              user_id: profile.id,
-              achievement_type: 'upload',
-              achievement_name: ach.title,
-              achieved_at: new Date().toISOString()
-            })
-          
-          if (!error) {
-            setAchievements(prev => [...prev, {
-              id: Date.now().toString(),
-              user_id: profile.id,
-              achievement_type: 'upload',
-              achievement_name: ach.title,
-              achieved_at: new Date().toISOString()
-            }])
-          }
-        }
-      }
-    }
-  }
-
-  async function loadAchievements() {
+  async function checkSecretAchievement(userId: string) {
     const { data } = await supabase
       .from('achievements')
       .select('*')
-      .eq('user_id', profile.id)
-      .order('achieved_at', { ascending: false })
+      .eq('user_id', userId)
+      .eq('achievement_name', 'Secret Agent: 1st Quest')
+      .maybeSingle()
     
     if (data) {
-      setAchievements(data)
+      setSecretCompleted(true)
     }
   }
 
-  async function toggleFollow() {
-    if (!currentUserId) return
-    if (following) {
-      await supabase.from('follows').delete().eq('follower_id', currentUserId).eq('following_id', profile.id)
-      setFollowing(false)
-      setFollowersCount((n) => Math.max(0, n - 1))
-    } else {
-      await supabase.from('follows').insert({ follower_id: currentUserId, following_id: profile.id })
-      setFollowing(true)
-      setFollowersCount((n) => n + 1)
-    }
-  }
-
-  // Собираем все значки с учетом скрытых и порядка
-  let allAvailableBadges: BadgeType[] = []
-  
-  // Добавляем купленные значки из магазина
-  const purchasedBadges = profile.purchased_badges || []
-  for (const badge of purchasedBadges) {
-    if (!allAvailableBadges.includes(badge as BadgeType)) {
-      allAvailableBadges.push(badge as BadgeType)
-    }
-  }
-  
-  // Добавляем специальные значки для конкретных пользователей
-  const isWinterWastaken = profile.username === 'winterwastaken' || profile.id === 'c2c721aa-bc04-4c6e-a86b-f3f105bd738f'
-  const isViscaelbarca = profile.username === 'viscaelbarca' || profile.id === 'ce0f7b34-b8d7-41b7-8437-dc3fc95399bd'
-  const isZaharques = profile.username === 'zaharques' || profile.id === '9e6a9c61-1205-4149-9328-7ea038b10726'
-  const isMavebo = profile.username === 'mavebo' || profile.id === 'fb94ce38-cdd4-4968-9e3a-ed49e12693c0'
-  const isCamilakiriek = profile.username === 'camilakiriek' || profile.id === '87fbca9a-f9ea-4f58-b1e5-c6bf6d6cce7e'
-  
-  if (isWinterWastaken && !allAvailableBadges.includes('snowflake')) {
-    allAvailableBadges.push('snowflake')
-  }
-  if (isCamilakiriek && !allAvailableBadges.includes('star')) {
-    allAvailableBadges.push('star')
-  }
-  if (isViscaelbarca && !allAvailableBadges.includes('star')) {
-    allAvailableBadges.push('star')
-  }
-  if (isMavebo && !allAvailableBadges.includes('verified')) {
-    allAvailableBadges.push('verified')
-  }
-  if (isZaharques && !allAvailableBadges.includes('computer')) {
-    allAvailableBadges.push('computer')
-  }
-  if (isZaharques && !allAvailableBadges.includes('star')) {
-    allAvailableBadges.push('star')
-  }
-  
-  // Фильтруем скрытые значки и сортируем по порядку
-  const visibleBadges = badgesOrder.filter(badgeId => 
-    allAvailableBadges.includes(badgeId as BadgeType) && !hiddenBadges.includes(badgeId)
-  )
-  
-  // Фильтруем ачивки для отображения (включая покупные из магазина)
-  const purchasedAchievements = profile.purchased_achievements || []
-  const allAchievements = [...achievements]
-  
-  // Добавляем покупные ачивки из магазина в список
-  for (const achId of purchasedAchievements) {
-    let achName = ''
-    if (achId === 'shopkeeper') achName = "Shopkeepers' Favorite"
-    if (achId === 'buyer') achName = 'Buyer'
-    if (achId === 'shopping') achName = 'Shopping'
+  async function completeSecretQuest() {
+    if (secretCompleted) return
     
-    if (achName && !allAchievements.some(a => a.achievement_name === achName)) {
-      allAchievements.push({
-        id: `shop_${achId}`,
-        user_id: profile.id,
-        achievement_type: 'shop',
-        achievement_name: achName,
+    const { error } = await supabase
+      .from('achievements')
+      .insert({
+        user_id: userId,
+        achievement_type: 'secret',
+        achievement_name: 'Secret Agent: 1st Quest',
         achieved_at: new Date().toISOString()
       })
+    
+    if (!error) {
+      setSecretCompleted(true)
+      setSecretModalOpen(false)
+      alert('🎉 Achievement unlocked: Secret Agent: 1st Quest!')
     }
   }
-  
-  const visibleAchievements = allAchievements.filter(ach => !hiddenAchievements.has(ach.id))
-  const hiddenAchievementsList = allAchievements.filter(ach => hiddenAchievements.has(ach.id))
 
-  const getAchievementConfig = (achievementName: string) => {
-    // Проверяем секретные ачивки
-    const secretAch = SECRET_ACHIEVEMENTS.find(a => a.title === achievementName)
-    if (secretAch) {
-      return { icon: secretAch.icon, color: secretAch.color, label: secretAch.description }
+  async function purchaseItem(type: string, itemId: string, price: number) {
+    if (originsBalance < price) {
+      alert(`Not enough Origins! You need ${(price - originsBalance).toFixed(1)} more.`)
+      return false
     }
+
+    setPurchasing(itemId)
+
+    if (type === 'badge' && purchasedBadges.includes(itemId)) {
+      alert('You already own this badge!')
+      setPurchasing(null)
+      return false
+    }
+    if (type === 'theme' && unlockedThemes.includes(itemId)) {
+      alert('You already unlocked this theme!')
+      setPurchasing(null)
+      return false
+    }
+    if (type === 'achievement' && purchasedAchievements.includes(itemId)) {
+      alert('You already have this achievement!')
+      setPurchasing(null)
+      return false
+    }
+
+    const newSpent = spentOrigins + price
+    const newBalance = maxOriginsBalance - newSpent
     
-    // Проверяем ачивки из магазина
-    const shopAch = SHOP_ACHIEVEMENTS.find(a => a.title === achievementName)
-    if (shopAch) {
-      return { icon: shopAch.icon, color: shopAch.color, label: shopAch.description }
+    const { error: balanceError } = await supabase
+      .from('profiles')
+      .update({ 
+        spent_origins: newSpent,
+        origins_balance: newBalance
+      })
+      .eq('id', userId)
+
+    if (balanceError) {
+      alert('Error processing purchase')
+      setPurchasing(null)
+      return false
     }
-    
-    const swipeAch = SWIPE_ACHIEVEMENTS.find(a => a.title === achievementName)
-    if (swipeAch) {
-      return { icon: swipeAch.icon, color: swipeAch.color, label: swipeAch.description }
+
+    setSpentOrigins(newSpent)
+    setOriginsBalance(newBalance)
+
+    if (type === 'badge') {
+      const newBadges = [...purchasedBadges, itemId]
+      setPurchasedBadges(newBadges)
+      await supabase
+        .from('profiles')
+        .update({ purchased_badges: newBadges })
+        .eq('id', userId)
+      
+      if (!badgesOrder.includes(itemId)) {
+        const newOrder = [...badgesOrder, itemId]
+        setBadgesOrder(newOrder)
+        await supabase
+          .from('profiles')
+          .update({ badges_order: newOrder })
+          .eq('id', userId)
+      }
     }
-    const uploadAch = UPLOAD_ACHIEVEMENTS.find(a => a.title === achievementName)
-    if (uploadAch) {
-      return { icon: uploadAch.icon, color: uploadAch.color, label: uploadAch.description }
+
+    if (type === 'theme') {
+      const newThemes = [...unlockedThemes, itemId]
+      setUnlockedThemes(newThemes)
+      await supabase
+        .from('profiles')
+        .update({ unlocked_themes: newThemes })
+        .eq('id', userId)
     }
-    return null
+
+    if (type === 'achievement') {
+      const newAchievements = [...purchasedAchievements, itemId]
+      setPurchasedAchievements(newAchievements)
+      await supabase
+        .from('profiles')
+        .update({ purchased_achievements: newAchievements })
+        .eq('id', userId)
+      
+      let achievementName = ''
+      if (itemId === 'shopkeeper') achievementName = "Shopkeepers' Favorite"
+      if (itemId === 'buyer') achievementName = 'Buyer'
+      if (itemId === 'shopping') achievementName = 'Shopping'
+      
+      await supabase
+        .from('achievements')
+        .insert({
+          user_id: userId,
+          achievement_type: 'shop',
+          achievement_name: achievementName,
+          achieved_at: new Date().toISOString()
+        })
+    }
+
+    alert('Purchase successful! 🎉')
+    setPurchasing(null)
+    return true
   }
 
-  const currentTheme = getCurrentTheme()
-  const currentPattern = getCurrentPattern()
-  const displaySwipeCount = hideSwipeCount && !isOwn ? '???' : swipeCount
+  function handleAvatarChange(f: File) {
+    setAvatarFile(f)
+    setAvatarPreview(URL.createObjectURL(f))
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    if (!userId) return
+    setLoading(true)
+    setError(null)
+
+    let finalAvatarUrl = avatarUrl
+
+    if (avatarFile) {
+      const ext = avatarFile.name.split('.').pop()
+      const path = `${userId}/avatar.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(path, avatarFile, { upsert: true })
+      if (uploadError) { setError(uploadError.message); setLoading(false); return }
+      const { data } = supabase.storage.from('photos').getPublicUrl(path)
+      finalAvatarUrl = data.publicUrl
+    }
+
+    const { error: updateError } = await supabase.from('profiles').update({
+      name: name.trim(),
+      username: username.trim().toLowerCase(),
+      bio: bio.trim(),
+      avatar_url: finalAvatarUrl,
+      updated_at: new Date().toISOString(),
+    }).eq('id', userId)
+
+    if (updateError) {
+      setError(updateError.message)
+    } else {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    }
+    setLoading(false)
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/auth/login')
+    router.refresh()
+  }
+
+  function handleShopClick() {
+    if (shopUnlocked) {
+      setShopModalOpen(true)
+    } else if (originsBalance >= 300) {
+      unlockShopPermanently()
+      setShopModalOpen(true)
+    } else {
+      setShopDialogStep(0)
+      setShopModalOpen(true)
+    }
+  }
+
+  function handleShopNext() {
+    if (shopDialogStep + 1 < shopDialogMessages.length) {
+      setShopDialogStep(shopDialogStep + 1)
+    } else {
+      setShopModalOpen(false)
+      setShopDialogStep(0)
+    }
+  }
+
+  const displayAvatar = avatarPreview ?? avatarUrl
+  const visibleBadges = badgesOrder.filter(b => !hiddenBadges.includes(b) && purchasedBadges.includes(b))
 
   return (
-    <main className="px-4 pt-6 pb-4 max-w-xl mx-auto">
-      {/* Profile header - ONLY THIS CONTAINER changes background and pattern */}
-      <div className={`rounded-2xl p-5 mb-5 flex flex-col items-center text-center gap-3 relative shadow-lg transition-all duration-300 ${currentTheme.bg} ${currentTheme.text}`}>
-        
-        {/* Apply pattern as background overlay if selected */}
-        {currentPattern && (
-          <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ backgroundImage: currentPattern, backgroundRepeat: 'repeat', opacity: 0.4 }} />
-        )}
-        
-        <div className="relative z-10 w-full">
-          {isOwn && (
-            <Link
-              href="/settings"
-              className="absolute top-0 right-0 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
-              aria-label="Settings"
-            >
-              <Settings className="w-5 h-5" />
-            </Link>
-          )}
-          
-          <div className="w-20 h-20 rounded-full overflow-hidden bg-muted mx-auto">
-            {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full bg-primary/20 flex items-center justify-center text-2xl font-bold text-primary">
-                {profile.name?.[0] ?? '?'}
-              </div>
-            )}
-          </div>
+    <main className="px-4 pt-6 pb-4 max-w-lg mx-auto">
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-6">Settings</h1>
 
-          <div className="mt-3">
-            <div className="flex items-center justify-center gap-2 flex-wrap">
-              <h1 className="text-lg font-semibold">{profile.name}</h1>
-              {visibleBadges.length > 0 && (
-                <div className="flex items-center gap-1">
-                  {visibleBadges.map((badgeId) => {
-                    const cfg = BADGE_CONFIG[badgeId as BadgeType]
-                    if (!cfg) return null
-                    const Icon = cfg.icon
-                    return (
-                      <span key={badgeId} title={cfg.label} aria-label={cfg.label}>
-                        <Icon className={`w-4 h-4 ${cfg.color}`} />
-                      </span>
-                    )
-                  })}
+      {/* Profile Settings */}
+      <div className="glass-juicy rounded-2xl p-6 mb-4">
+        <form onSubmit={handleSave} className="flex flex-col gap-5">
+          {error && <p className="text-sm text-destructive bg-destructive/8 rounded-xl px-4 py-3">{error}</p>}
+
+          <div className="flex flex-col items-center gap-3">
+            <div
+              className="w-20 h-20 rounded-full overflow-hidden bg-muted cursor-pointer relative group"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {displayAvatar ? (
+                <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-2xl font-bold text-primary">
+                  {name?.[0] ?? '?'}
                 </div>
               )}
+              <div className="absolute inset-0 bg-foreground/0 group-hover:bg-foreground/30 transition-all flex items-center justify-center">
+                <Camera className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
             </div>
-            <p className="text-sm opacity-80">@{profile.username}</p>
-            {profile.bio && <p className="text-sm opacity-80 mt-1.5 leading-relaxed">{profile.bio}</p>}
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleAvatarChange(e.target.files[0])} />
+            <p className="text-xs text-muted-foreground">Click to change photo</p>
           </div>
 
-          {/* Stats with links */}
-          <div className="flex gap-6 text-center justify-center mt-3">
-            <Link href={isOwn ? '/following?tab=followers' : '#'} className="hover:opacity-80 transition-opacity">
-              <p className="text-lg font-semibold">{followersCount}</p>
-              <p className="text-xs opacity-70">Followers</p>
-            </Link>
-            <Link href={isOwn ? '/following' : '#'} className="hover:opacity-80 transition-opacity">
-              <p className="text-lg font-semibold">{profile.following_count ?? 0}</p>
-              <p className="text-xs opacity-70">Following</p>
-            </Link>
-            <div>
-              <p className="text-lg font-semibold">{uploadCount}</p>
-              <p className="text-xs opacity-70">Photos</p>
-            </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-foreground">Full Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="w-full px-4 py-3 rounded-xl bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-foreground">Username</label>
             <div className="relative">
-              <div className="flex items-center justify-center gap-1">
-                <Flame className="w-4 h-4 text-orange-500" />
-                <p className="text-lg font-semibold">
-                  {displaySwipeCount}
-                </p>
-                {isOwn && (
-                  <button
-                    onClick={() => {
-                      setTempSwipeValue(swipeCount)
-                      setShowSwipeEditor(true)
-                    }}
-                    className="p-1 rounded-md opacity-70 hover:opacity-100 transition-colors"
-                    title="Edit swipe count"
-                  >
-                    <Edit2 className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-              <p className="text-xs opacity-70">Swipes</p>
-              {isOwn && (
-                <button
-                  onClick={toggleHideSwipeCount}
-                  className="absolute -right-6 top-0 p-1 rounded-md opacity-70 hover:opacity-100 transition-colors"
-                  title={hideSwipeCount ? "Show swipe count to others" : "Hide swipe count from others"}
-                >
-                  {hideSwipeCount ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                </button>
-              )}
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">@</span>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_.]/g, ''))}
+                required
+                className="w-full pl-8 pr-4 py-3 rounded-xl bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+              />
             </div>
           </div>
 
-          {/* Origins Balance - только для владельца профиля */}
-          {isOwn && (
-            <div className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 inline-block mx-auto">
-              <div className="flex items-center justify-center gap-2">
-                <Coins className="w-4 h-4 text-amber-500" />
-                <p className="text-sm font-semibold">
-                  {originsBalance.toFixed(1)} Origins
-                </p>
-              </div>
-              <p className="text-xs opacity-70 mt-1">
-                {uploadCount} photos + {swipeCount} swipes ×0.5 = {maxOriginsBalance.toFixed(1)} total
-                {spentOrigins > 0 && ` · ${spentOrigins.toFixed(1)} spent`}
-              </p>
-            </div>
-          )}
-
-          {/* Buttons container - центрируем кнопки */}
-          <div className="mt-4 flex justify-center">
-            {isOwn ? (
-              <Link
-                href="/settings"
-                className="px-6 py-2 rounded-xl bg-secondary text-secondary-foreground text-sm font-medium hover:bg-accent transition-colors inline-flex items-center gap-2"
-              >
-                <Settings className="w-4 h-4" />
-                Edit Profile
-              </Link>
-            ) : (
-              <button
-                onClick={toggleFollow}
-                className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-medium transition-all ${
-                  following
-                    ? 'bg-secondary text-secondary-foreground hover:bg-accent'
-                    : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shadow-primary/20'
-                }`}
-              >
-                {following ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                {following ? 'Following' : 'Follow'}
-              </button>
-            )}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-foreground">Bio</label>
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              rows={3}
+              placeholder="Tell people a little about yourself..."
+              className="w-full px-4 py-3 rounded-xl bg-input border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none transition-all"
+            />
           </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 rounded-xl bg-black text-white text-sm font-semibold transition-all flex items-center justify-center gap-2 hover:bg-black/90 active:scale-[0.98]"
+          >
+            <Save className="w-4 h-4" />
+            {saved ? 'Saved!' : loading ? 'Saving...' : 'Save Changes'}
+          </button>
+        </form>
+      </div>
+
+      {/* Leaderboard Button */}
+      <button
+        onClick={() => {
+          loadLeaderboard()
+          setLeaderboardModalOpen(true)
+        }}
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
+      >
+        <TrendingUp className="w-4 h-4" />
+        Leaderboard
+      </button>
+
+      {/* My Badges Button */}
+      <button
+        onClick={() => setBadgesModalOpen(true)}
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
+      >
+        <Star className="w-4 h-4" />
+        My Badges
+        {visibleBadges.length > 0 && (
+          <span className="ml-2 text-xs text-green-500">{visibleBadges.length} shown</span>
+        )}
+      </button>
+
+      {/* Decorations Button */}
+      <button
+        onClick={() => setDecorationsModalOpen(true)}
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
+      >
+        <Palette className="w-4 h-4" />
+        Decorations
+      </button>
+
+      {/* Shop Button */}
+      <button
+        onClick={handleShopClick}
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
+      >
+        <ShoppingBag className="w-4 h-4" />
+        Shop
+        {!shopUnlocked && originsBalance < 300 ? (
+          <span className="ml-2 text-xs text-amber-500">🔒 {Math.ceil(300 - originsBalance)} to unlock</span>
+        ) : (
+          <span className="ml-2 text-xs text-green-500">✓ Unlocked</span>
+        )}
+      </button>
+
+      {/* My Origins Button */}
+      <button
+        onClick={() => setOriginsModalOpen(true)}
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
+      >
+        <Coins className="w-4 h-4" />
+        My Origins
+        <span className="ml-2 text-amber-500 font-semibold">{originsBalance.toFixed(1)}</span>
+      </button>
+
+      {/* Secret Button */}
+      <button
+        onClick={() => setSecretModalOpen(true)}
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-4 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
+      >
+        <Key className="w-4 h-4" />
+        Secret
+        {secretCompleted && (
+          <span className="ml-2 text-xs text-green-500">✓ Completed</span>
+        )}
+      </button>
+
+      {/* Resources Section */}
+      <div className="glass rounded-2xl p-4 mb-4">
+        <h2 className="text-sm font-semibold text-foreground mb-3">Resources</h2>
+        <div className="space-y-2">
+          <Link
+            href="/about"
+            className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+          >
+            <Users className="w-4 h-4" />
+            <span>About StartOrigin</span>
+          </Link>
+          <Link
+            href="/docs"
+            className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Documentation</span>
+          </Link>
         </div>
       </div>
 
-      {/* Swipe Editor Modal */}
-      {showSwipeEditor && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 className="text-lg font-semibold mb-4">Edit Swipe Count</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              Current: {swipeCount} / Max: {originalSwipeCount}
-            </p>
-            <div className="flex items-center gap-2 mb-4">
-              <button
-                onClick={() => setTempSwipeValue(Math.max(0, tempSwipeValue - 1))}
-                className="p-2 rounded-lg bg-muted hover:bg-muted/80"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              <input
-                type="number"
-                value={tempSwipeValue}
-                onChange={(e) => setTempSwipeValue(parseInt(e.target.value) || 0)}
-                className="flex-1 px-3 py-2 rounded-lg bg-input border border-border text-center"
-                min={0}
-                max={originalSwipeCount}
-              />
-              <button
-                onClick={() => setTempSwipeValue(Math.min(originalSwipeCount, tempSwipeValue + 1))}
-                className="p-2 rounded-lg bg-muted hover:bg-muted/80"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => updateSwipeCount(tempSwipeValue)}
-                className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setShowSwipeEditor(false)}
-                className="flex-1 py-2 rounded-lg bg-muted hover:bg-muted/80"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Logout Button */}
+      <button
+        onClick={handleLogout}
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border text-sm font-medium transition-all flex items-center justify-center gap-2 text-destructive hover:bg-white dark:hover:bg-gray-900"
+      >
+        <LogOut className="w-4 h-4" />
+        Sign Out
+      </button>
 
-      {/* Visible Achievements Section */}
-      {visibleAchievements.length > 0 && (
-        <div className="glass rounded-2xl p-5 mb-5">
-          <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-yellow-500" />
-            Achievements
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {visibleAchievements.map((achievement) => {
-              const achConfig = getAchievementConfig(achievement.achievement_name)
-              if (!achConfig) return null
-              const Icon = achConfig.icon
-              return (
-                <div key={achievement.id} className="relative group">
-                  <div 
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border hover:border-primary/50 transition-all"
-                    title={achConfig.label}
-                  >
-                    <Icon className={`w-4 h-4 ${achConfig.color}`} />
-                    <span className="text-xs font-medium text-foreground">{achievement.achievement_name}</span>
-                  </div>
-                  {isOwn && (
-                    <button
-                      onClick={() => toggleHideAchievement(achievement.id)}
-                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center transition-opacity hover:scale-110 hover:bg-destructive hover:text-destructive-foreground md:opacity-0 md:group-hover:opacity-100"
-                      aria-label="Hide achievement"
-                      title="Hide from profile"
-                    >
-                      <EyeOff className="w-3 h-3" />
-                    </button>
-                  )}
+      {/* Leaderboard Modal */}
+      {leaderboardModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setLeaderboardModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-border p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-yellow-500" />
+                Leaderboard
+              </h2>
+              <button onClick={() => setLeaderboardModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4">
+              {loadingLeaderboard ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
-              )
-            })}
+              ) : (
+                <>
+                  {/* Top by Photos */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-green-500" />
+                      Most Photos
+                    </h3>
+                    <div className="space-y-2">
+                      {leaderboardData.photos.map((user, idx) => (
+                        <div key={user.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 text-sm font-bold text-yellow-500">#{idx + 1}</span>
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
+                              {user.avatar_url ? (
+                                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs">
+                                  {user.name?.[0] || '?'}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{user.name}</p>
+                              <p className="text-xs text-muted-foreground">@{user.username}</p>
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">{user.photo_count || 0} photos</span>
+                        </div>
+                      ))}
+                      {leaderboardData.photos.length === 0 && (
+                        <p className="text-center text-xs text-muted-foreground py-4">No data yet</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Top by Swipes */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Flame className="w-4 h-4 text-orange-500" />
+                      Most Swipes
+                    </h3>
+                    <div className="space-y-2">
+                      {leaderboardData.swipes.map((user, idx) => (
+                        <div key={user.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 text-sm font-bold text-yellow-500">#{idx + 1}</span>
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
+                              {user.avatar_url ? (
+                                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs">
+                                  {user.name?.[0] || '?'}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{user.name}</p>
+                              <p className="text-xs text-muted-foreground">@{user.username}</p>
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">{user.real_swipe_count || 0} swipes</span>
+                        </div>
+                      ))}
+                      {leaderboardData.swipes.length === 0 && (
+                        <p className="text-center text-xs text-muted-foreground py-4">No data yet</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Top by Origins */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Coins className="w-4 h-4 text-amber-500" />
+                      Richest (Origins)
+                    </h3>
+                    <div className="space-y-2">
+                      {leaderboardData.origins.map((user, idx) => (
+                        <div key={user.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 text-sm font-bold text-yellow-500">#{idx + 1}</span>
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
+                              {user.avatar_url ? (
+                                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs">
+                                  {user.name?.[0] || '?'}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{user.name}</p>
+                              <p className="text-xs text-muted-foreground">@{user.username}</p>
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">{user.origins_balance?.toFixed(1) || 0} Origins</span>
+                        </div>
+                      ))}
+                      {leaderboardData.origins.length === 0 && (
+                        <p className="text-center text-xs text-muted-foreground py-4">No data yet</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Top by Followers */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4 text-blue-500" />
+                      Most Followers
+                    </h3>
+                    <div className="space-y-2">
+                      {leaderboardData.followers.map((user, idx) => (
+                        <div key={user.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 text-sm font-bold text-yellow-500">#{idx + 1}</span>
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
+                              {user.avatar_url ? (
+                                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs">
+                                  {user.name?.[0] || '?'}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{user.name}</p>
+                              <p className="text-xs text-muted-foreground">@{user.username}</p>
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">{user.followers_count || 0} followers</span>
+                        </div>
+                      ))}
+                      {leaderboardData.followers.length === 0 && (
+                        <p className="text-center text-xs text-muted-foreground py-4">No data yet</p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Hidden Achievements Section - видна только владельцу */}
-      {isOwn && hiddenAchievementsList.length > 0 && (
-        <div className="glass rounded-2xl p-5 mb-5 opacity-75 hover:opacity-100 transition-opacity">
-          <button
-            onClick={() => setShowHiddenAchievements(!showHiddenAchievements)}
-            className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-3"
-          >
-            <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-muted-foreground" />
-              <span>Hidden Achievements ({hiddenAchievementsList.length})</span>
+      {/* My Badges Modal */}
+      {badgesModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setBadgesModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-border p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Star className="w-5 h-5 text-amber-500" />
+                My Badges
+              </h2>
+              <button onClick={() => setBadgesModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <span className="text-xs text-muted-foreground">{showHiddenAchievements ? '▼' : '▶'}</span>
-          </button>
-          
-          {showHiddenAchievements && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {hiddenAchievementsList.map((achievement) => {
-                const achConfig = getAchievementConfig(achievement.achievement_name)
-                if (!achConfig) return null
-                const Icon = achConfig.icon
-                return (
-                  <div key={achievement.id} className="relative group">
-                    <div 
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/30 border border-dashed border-border opacity-70"
-                      title={achConfig.label}
+            
+            <div className="p-4">
+              <p className="text-sm text-muted-foreground mb-4 text-center">
+                Drag to reorder · Click 👁️ to hide/show
+              </p>
+              
+              <div className="space-y-2 mb-6">
+                {badgesOrder.map((badgeId) => {
+                  const badge = BADGE_DISPLAY[badgeId]
+                  if (!badge) return null
+                  const Icon = badge.icon
+                  const isHidden = hiddenBadges.includes(badgeId)
+                  const isOwned = purchasedBadges.includes(badgeId)
+                  
+                  if (!isOwned) return null
+                  
+                  return (
+                    <div
+                      key={badgeId}
+                      draggable
+                      onDragStart={() => handleDragStart(badgeId)}
+                      onDragOver={handleDragOver}
+                      onDrop={() => handleDrop(badgeId)}
+                      className={`flex items-center justify-between p-3 rounded-xl border ${isHidden ? 'border-dashed opacity-50' : 'border-border'} bg-muted/20 cursor-move transition-all hover:bg-muted/40`}
                     >
-                      <Icon className={`w-4 h-4 ${achConfig.color} opacity-70`} />
-                      <span className="text-xs font-medium text-muted-foreground">{achievement.achievement_name}</span>
+                      <div className="flex items-center gap-3">
+                        <GripVertical className="w-4 h-4 text-muted-foreground" />
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                          <Icon className={`w-4 h-4 ${badge.color}`} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{badge.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {isHidden ? 'Hidden from profile' : 'Visible on profile'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => moveBadgeUp(badgeId)}
+                          className="p-1 rounded hover:bg-muted transition-colors"
+                          disabled={badgesOrder.indexOf(badgeId) === 0}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          onClick={() => moveBadgeDown(badgeId)}
+                          className="p-1 rounded hover:bg-muted transition-colors"
+                          disabled={badgesOrder.indexOf(badgeId) === badgesOrder.length - 1}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          onClick={() => toggleHideBadge(badgeId)}
+                          className={`p-1 rounded transition-colors ${isHidden ? 'hover:bg-green-500/20' : 'hover:bg-destructive/20'}`}
+                        >
+                          {isHidden ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-destructive" />}
+                        </button>
+                      </div>
                     </div>
+                  )
+                })}
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={saveBadgesSettings}
+                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all"
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={() => setBadgesModalOpen(false)}
+                  className="flex-1 py-3 rounded-xl bg-muted text-muted-foreground text-sm font-semibold hover:bg-muted/80 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shop Modal - Locked State */}
+      {shopModalOpen && !shopUnlocked && originsBalance < 300 && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShopModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="relative h-48 bg-cover bg-center" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=800&h=400&fit=crop)' }}>
+              <button
+                onClick={() => setShopModalOpen(false)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-lg font-medium text-foreground mb-4">
+                {shopDialogMessages[shopDialogStep]}
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                You need {Math.ceil(300 - originsBalance)} more Origins to unlock the shop!
+              </p>
+              <button
+                onClick={handleShopNext}
+                className="w-full py-3 rounded-xl bg-black dark:bg-white text-white dark:text-black text-sm font-semibold hover:bg-black/90 dark:hover:bg-white/90 transition-all"
+              >
+                {shopDialogStep + 1 < shopDialogMessages.length ? 'Continue...' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shop Modal - Unlocked State */}
+      {(shopModalOpen && (shopUnlocked || originsBalance >= 300)) && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShopModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-border p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-purple-500" />
+                Shop
+              </h2>
+              <button onClick={() => setShopModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4">
+              <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                  Your Origins: <span className="font-bold">{originsBalance.toFixed(1)}</span>
+                </p>
+              </div>
+
+              {/* Badges Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Star className="w-4 h-4" />
+                  Badges
+                </h3>
+                <div className="space-y-2">
+                  {shopItems.badges.map((item) => {
+                    const Icon = item.icon
+                    const isOwned = purchasedBadges.includes(item.id)
+                    const canAfford = originsBalance >= item.price
+                    const isDisabled = item.disabled
+                    
+                    return (
+                      <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border ${isOwned ? 'border-green-500/30 bg-green-500/5' : 'border-border'} ${isDisabled ? 'opacity-50' : ''}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <Icon className={`w-5 h-5 ${item.color}`} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                          </div>
+                        </div>
+                        {isOwned ? (
+                          <span className="text-xs text-green-500 font-medium">✓ Owned</span>
+                        ) : isDisabled ? (
+                          <span className="text-xs text-muted-foreground">Coming Soon</span>
+                        ) : (
+                          <button
+                            onClick={() => purchaseItem('badge', item.id, item.price)}
+                            disabled={purchasing === item.id || !canAfford}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 ${
+                              canAfford 
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                            }`}
+                          >
+                            <Coins className="w-3 h-3" />
+                            {item.price}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Themes Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Palette className="w-4 h-4" />
+                  Themes
+                </h3>
+                <div className="space-y-2">
+                  {shopItems.themes.map((item) => {
+                    const Icon = item.icon
+                    const isOwned = unlockedThemes.includes(item.id)
+                    const canAfford = originsBalance >= item.price
+                    
+                    return (
+                      <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border ${isOwned ? 'border-green-500/30 bg-green-500/5' : 'border-border'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                          </div>
+                        </div>
+                        {isOwned ? (
+                          <span className="text-xs text-green-500 font-medium">✓ Unlocked</span>
+                        ) : (
+                          <button
+                            onClick={() => purchaseItem('theme', item.id, item.price)}
+                            disabled={purchasing === item.id || !canAfford}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 ${
+                              canAfford 
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                            }`}
+                          >
+                            <Coins className="w-3 h-3" />
+                            {item.price}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Achievements Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Trophy className="w-4 h-4" />
+                  Achievements
+                </h3>
+                <div className="space-y-2">
+                  {shopItems.achievements.map((item) => {
+                    const Icon = item.icon
+                    const isOwned = purchasedAchievements.includes(item.id)
+                    const canAfford = originsBalance >= item.price
+                    
+                    return (
+                      <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border ${isOwned ? 'border-green-500/30 bg-green-500/5' : 'border-border'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                          </div>
+                        </div>
+                        {isOwned ? (
+                          <span className="text-xs text-green-500 font-medium">✓ Owned</span>
+                        ) : (
+                          <button
+                            onClick={() => purchaseItem('achievement', item.id, item.price)}
+                            disabled={purchasing === item.id || !canAfford}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 ${
+                              canAfford 
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                            }`}
+                          >
+                            <Coins className="w-3 h-3" />
+                            {item.price}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* My Origins Modal */}
+      {originsModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setOriginsModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="border-b border-border p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Coins className="w-5 h-5 text-amber-500" />
+                My Origins
+              </h2>
+              <button onClick={() => setOriginsModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="text-center mb-6 space-y-2">
+                <div>
+                  <p className="text-3xl font-bold text-amber-500">{originsBalance.toFixed(1)}</p>
+                  <p className="text-xs text-muted-foreground">Current Balance</p>
+                </div>
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xl font-semibold text-foreground">{maxOriginsBalance.toFixed(1)}</p>
+                  <p className="text-xs text-muted-foreground">Total Earned</p>
+                </div>
+              </div>
+              
+              <div className="bg-muted/30 rounded-xl p-4 mb-6">
+                <p className="text-sm text-foreground mb-2">📸 How Origins work:</p>
+                <p className="text-xs text-muted-foreground">
+                  You earn Origins from activity, then spend them in the Shop!
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  • {uploadCount} photos × 1 = {uploadCount} Origins earned<br />
+                  • {swipeCount} swipes × 0.5 = {(swipeCount * 0.5).toFixed(1)} Origins earned
+                </p>
+                <p className="text-xs text-amber-500 mt-2">
+                  Spent: {spentOrigins.toFixed(1)} / {maxOriginsBalance.toFixed(1)} Origins
+                </p>
+              </div>
+              
+              <button
+                disabled
+                className="w-full py-3 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-sm font-semibold cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <Coins className="w-4 h-4" />
+                Add Origins to Balance (Coming Soon)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Decorations Modal */}
+      {decorationsModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setDecorationsModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full shadow-2xl my-8" onClick={(e) => e.stopPropagation()}>
+            <div className="border-b border-border p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Palette className="w-5 h-5 text-purple-500" />
+                Decorations
+              </h2>
+              <button onClick={() => setDecorationsModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              {/* Themes Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-foreground mb-3">Themes</h3>
+                <div className="grid grid-cols-5 gap-2">
+                  {themes.map((theme) => (
                     <button
-                      onClick={() => toggleHideAchievement(achievement.id)}
-                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center transition-opacity hover:scale-110 md:opacity-0 md:group-hover:opacity-100"
-                      aria-label="Show achievement"
-                      title="Show on profile"
+                      key={theme.id}
+                      onClick={() => !theme.disabled && saveThemeAndPattern(theme.id, selectedPattern)}
+                      disabled={theme.disabled}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+                        selectedTheme === theme.id
+                          ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-gray-900'
+                          : 'hover:bg-muted/50'
+                      } ${theme.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <Eye className="w-3 h-3" />
+                      <div className={`w-10 h-10 rounded-lg ${theme.preview} border border-border`} />
+                      <span className={`text-xs ${selectedTheme === theme.id ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                        {theme.name}
+                      </span>
+                      {theme.disabled && (
+                        <span className="text-[10px] text-amber-500">🔒 {theme.price ? `${theme.price} Origins` : 'Locked'}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  💡 New themes (Blue, Purple, Orange, Red) are locked by default. Buy them in the Shop!
+                </p>
+              </div>
+
+              {/* Patterns Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-foreground mb-3">Patterns</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {patterns.map((pattern) => (
+                    <button
+                      key={pattern.id}
+                      onClick={() => saveThemeAndPattern(selectedTheme, pattern.id)}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+                        selectedPattern === pattern.id
+                          ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-gray-900'
+                          : 'hover:bg-muted/50'
+                      }`}
+                    >
+                      <div className={`w-full h-10 rounded-lg bg-gray-200 dark:bg-gray-700 ${pattern.preview} border border-border`} />
+                      <span className={`text-xs ${selectedPattern === pattern.id ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                        {pattern.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground text-center">
+                Your decorations will appear on your profile page
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Secret Modal */}
+      {secretModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setSecretModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="border-b border-border p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Key className="w-5 h-5 text-purple-500" />
+                Secret Quest
+              </h2>
+              <button onClick={() => setSecretModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              {secretCompleted ? (
+                <div className="text-center">
+                  <p className="text-green-500 mb-2">✓ Achievement Unlocked!</p>
+                  <p className="text-sm text-muted-foreground">You've already completed this quest.</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-foreground mb-4 text-center">
+                    Find the hidden button to unlock "Secret Agent: 1st Quest" achievement
+                  </p>
+                  
+                  <div className="relative bg-gradient-to-br from-gray-700 to-gray-900 rounded-xl p-8 mb-4 overflow-hidden">
+                    <img 
+                      src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&h=300&fit=crop" 
+                      alt="Mysterious background" 
+                      className="w-full h-40 object-cover rounded-lg opacity-80"
+                    />
+                    
+                    <button
+                      onClick={completeSecretQuest}
+                      className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-purple-500/0 hover:bg-purple-500/80 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100"
+                      onMouseEnter={() => setSecretButtonFound(true)}
+                      onMouseLeave={() => setSecretButtonFound(false)}
+                    >
+                      <Key className="w-4 h-4 text-white" />
+                    </button>
+                    
+                    <button
+                      className="absolute top-3 left-3 w-6 h-6 rounded-full bg-gray-500/50 hover:bg-gray-500/70 transition-all flex items-center justify-center group"
+                      onClick={() => setShowSecretHint(!showSecretHint)}
+                    >
+                      <span className="text-white text-xs font-bold">?</span>
                     </button>
                   </div>
-                )
-              })}
+                  
+                  {showSecretHint && (
+                    <p className="text-xs text-muted-foreground text-center mt-2 animate-pulse">
+                      Hint: Look in the bottom right corner... 👀
+                    </p>
+                  )}
+                  
+                  {secretButtonFound && !secretCompleted && (
+                    <p className="text-xs text-green-500 text-center mt-2">
+                      You found it! Click the key button to claim your achievement!
+                    </p>
+                  )}
+                </>
+              )}
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Photos grid */}
-      {photos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-          <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-            <Images className="w-6 h-6 text-muted-foreground" />
           </div>
-          <p className="text-sm text-muted-foreground">No public photos yet.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 gap-1.5">
-          {photos.map((photo) => (
-            <div
-              key={photo.id}
-              className="aspect-square rounded-xl overflow-hidden bg-muted cursor-pointer"
-              onClick={() => setViewer(photo)}
-            >
-              <img src={photo.url} alt={photo.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
-            </div>
-          ))}
         </div>
       )}
-
-      {viewer && <PhotoViewer photo={viewer} onClose={() => setViewer(null)} />}
     </main>
   )
 }
