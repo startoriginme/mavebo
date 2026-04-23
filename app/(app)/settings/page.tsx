@@ -229,42 +229,40 @@ export default function SettingsPage() {
       })
       .eq('id', userId)
   }
-async function loadOriginsBalance(userId: string) {
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('swipe_count, origins_balance, spent_origins')
-    .eq('id', userId)
-    .single()
-  
-  const swipeCountValue = profileData?.swipe_count || 0
-  setSwipeCount(swipeCountValue)
-  
-  const { count: photoCount } = await supabase
-    .from('photos')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-  
-  const photoCountValue = photoCount || 0
-  setUploadCount(photoCountValue)
-  
-  // Берем баланс напрямую из БД
-  const currentBalance = profileData?.origins_balance ?? 0
-  setOriginsBalance(currentBalance)
-  
-  // Только для отображения
-  const maxBalance = photoCountValue + (swipeCountValue * 0.5)
-  setMaxOriginsBalance(maxBalance)
-  
-  const spent = profileData?.spent_origins ?? 0
-  setSpentOrigins(spent)
-  
-  // !!! УДАЛИ или ЗАКОММЕНТИРУЙ ЭТОТ БЛОК !!!
-  // await supabase
-  //   .from('profiles')
-  //   .update({ origins_balance: currentBalance })
-  //   .eq('id', userId)
-}
-  
+
+  async function loadOriginsBalance(userId: string) {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('swipe_count, origins_balance, spent_origins')
+      .eq('id', userId)
+      .single()
+    
+    const swipeCountValue = profileData?.swipe_count || 0
+    setSwipeCount(swipeCountValue)
+    
+    const { count: photoCount } = await supabase
+      .from('photos')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+    
+    const photoCountValue = photoCount || 0
+    setUploadCount(photoCountValue)
+    
+    const maxBalance = photoCountValue + (swipeCountValue * 0.5)
+    setMaxOriginsBalance(maxBalance)
+    
+    const spent = profileData?.spent_origins || 0
+    setSpentOrigins(spent)
+    
+    const currentBalance = maxBalance - spent
+    setOriginsBalance(currentBalance)
+    
+    await supabase
+      .from('profiles')
+      .update({ origins_balance: currentBalance })
+      .eq('id', userId)
+  }
+
   async function saveBadgesSettings() {
     await supabase
       .from('profiles')
