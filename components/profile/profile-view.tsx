@@ -146,9 +146,9 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     }
   }, [uploadCount])
 
-  // Пересчитываем баланс Origins при изменении свайпов и фоток
+  // Загружаем баланс Origins
   useEffect(() => {
-    calculateOriginsBalance()
+    loadOriginsBalance()
   }, [swipeCount, uploadCount])
 
   async function loadBadgeSettings() {
@@ -184,33 +184,25 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   function getCurrentPattern() {
     return PATTERNS[patternPreference] || ''
   }
-async function calculateOriginsBalance() {
-  // ПРОСТО БЕРЕМ баланс из БД, НЕ ПЕРЕСЧИТЫВАЕМ!
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('origins_balance, spent_origins')
-    .eq('id', profile.id)
-    .single()
-  
-  // Берем значение из БД
-  const currentBalance = profileData?.origins_balance ?? 0
-  setOriginsBalance(currentBalance)
-  
-  const spent = profileData?.spent_origins ?? 0
-  setSpentOrigins(spent)
-  
-  // Только для отображения (не сохраняем в БД)
-  const maxBalance = uploadCount + (swipeCount * 0.5)
-  setMaxOriginsBalance(maxBalance)
-  
-  // !!! УДАЛИ или ЗАКОММЕНТИРУЙ ЭТОТ БЛОК !!!
-  // if (isOwn) {
-  //   await supabase
-  //     .from('profiles')
-  //     .update({ origins_balance: currentBalance })
-  //     .eq('id', profile.id)
-  // }
-}
+
+  async function loadOriginsBalance() {
+    // Просто берем баланс из БД, НЕ ПЕРЕСЧИТЫВАЕМ!
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('origins_balance, spent_origins')
+      .eq('id', profile.id)
+      .single()
+    
+    // Берем значение из БД
+    const currentBalance = profileData?.origins_balance ?? 0
+    setOriginsBalance(currentBalance)
+    
+    const spent = profileData?.spent_origins ?? 0
+    setSpentOrigins(spent)
+    
+    // Только для отображения (не сохраняем в БД)
+    const maxBalance = uploadCount + (swipeCount * 0.5)
+    setMaxOriginsBalance(maxBalance)
   }
 
   async function loadUserStats() {
