@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X, Star, Computer, Snowflake, BadgeCheck, Palette, Trophy, ShoppingCart, Zap, GripVertical, Eye, EyeOff } from 'lucide-react'
+import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X, Star, Computer, Snowflake, BadgeCheck, Palette, Trophy, ShoppingCart, Zap, GripVertical, Eye, EyeOff, Crown, Award, Heart, Diamond, Sparkles, Medal, TrendingUp } from 'lucide-react'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -28,6 +28,7 @@ export default function SettingsPage() {
   const [secretModalOpen, setSecretModalOpen] = useState(false)
   const [decorationsModalOpen, setDecorationsModalOpen] = useState(false)
   const [badgesModalOpen, setBadgesModalOpen] = useState(false)
+  const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false)
   
   // Shop modal state
   const [shopUnlocked, setShopUnlocked] = useState(false)
@@ -65,28 +66,46 @@ export default function SettingsPage() {
   
   // Badges management
   const [hiddenBadges, setHiddenBadges] = useState<string[]>([])
-  const [badgesOrder, setBadgesOrder] = useState<string[]>(['star', 'computer', 'snowflake', 'verified'])
+  const [badgesOrder, setBadgesOrder] = useState<string[]>(['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart'])
   const [draggedBadge, setDraggedBadge] = useState<string | null>(null)
 
   // Decoration state
   const [selectedTheme, setSelectedTheme] = useState<string>('default')
   const [selectedPattern, setSelectedPattern] = useState<string>('none')
 
+  // Leaderboard data
+  const [leaderboardData, setLeaderboardData] = useState({
+    photos: [] as any[],
+    swipes: [] as any[],
+    origins: [] as any[],
+    followers: [] as any[]
+  })
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false)
+
   // Badge config for display
-  const BADGE_DISPLAY: Record<string, { name: string; icon: React.ElementType; color: string }> = {
-    star: { name: 'Star Badge', icon: Star, color: 'text-amber-400' },
-    computer: { name: 'Computer Badge', icon: Computer, color: 'text-violet-500' },
-    snowflake: { name: 'Snowflake Badge', icon: Snowflake, color: 'text-cyan-400' },
-    verified: { name: 'Verified Badge', icon: BadgeCheck, color: 'text-blue-500' },
+  const BADGE_DISPLAY: Record<string, { name: string; icon: React.ElementType; color: string; price?: number; description?: string }> = {
+    star: { name: 'Star Badge', icon: Star, color: 'text-amber-400', price: 450, description: 'A shining star badge' },
+    computer: { name: 'Computer Badge', icon: Computer, color: 'text-violet-500', price: 350, description: 'Tech enthusiast badge' },
+    snowflake: { name: 'Snowflake Badge', icon: Snowflake, color: 'text-cyan-400', price: 2000, description: 'Rare snowflake badge' },
+    verified: { name: 'Verified Badge', icon: BadgeCheck, color: 'text-blue-500', price: 9999, description: 'Official verified badge' },
+    crown: { name: 'Crown Badge', icon: Crown, color: 'text-yellow-500', price: 3000, description: 'Royal crown badge' },
+    diamond: { name: 'Diamond Badge', icon: Diamond, color: 'text-sky-400', price: 5000, description: 'Rare diamond badge' },
+    heart: { name: 'Heart Badge', icon: Heart, color: 'text-pink-500', price: 800, description: 'Loving heart badge' },
+    award: { name: 'Award Badge', icon: Award, color: 'text-emerald-500', price: 1200, description: 'Prestigious award badge' },
+    sparkles: { name: 'Sparkle Badge', icon: Sparkles, color: 'text-purple-400', price: 1500, description: 'Magical sparkle badge' },
   }
 
-  // Theme options
+  // Theme options (расширенные)
   const themes = [
     { id: 'default', name: 'Default', bg: 'bg-white dark:bg-gray-900', text: 'text-black dark:text-white', preview: 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900' },
     { id: 'black', name: 'Black', bg: 'bg-black', text: 'text-white', preview: 'bg-black', disabled: !unlockedThemes.includes('black') },
     { id: 'pink', name: 'Pink', bg: 'bg-pink-100 dark:bg-pink-900', text: 'text-pink-900 dark:text-pink-100', preview: 'bg-pink-300 dark:bg-pink-700' },
     { id: 'gray', name: 'Gray', bg: 'bg-gray-300 dark:bg-gray-700', text: 'text-gray-800 dark:text-gray-200', preview: 'bg-gray-400 dark:bg-gray-600' },
     { id: 'green', name: 'Green', bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-900 dark:text-green-100', preview: 'bg-green-300 dark:bg-green-700' },
+    { id: 'blue', name: 'Blue', bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-900 dark:text-blue-100', preview: 'bg-blue-300 dark:bg-blue-700', price: 300 },
+    { id: 'purple', name: 'Purple', bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-900 dark:text-purple-100', preview: 'bg-purple-300 dark:bg-purple-700', price: 300 },
+    { id: 'orange', name: 'Orange', bg: 'bg-orange-100 dark:bg-orange-900', text: 'text-orange-900 dark:text-orange-100', preview: 'bg-orange-300 dark:bg-orange-700', price: 300 },
+    { id: 'red', name: 'Red', bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-900 dark:text-red-100', preview: 'bg-red-300 dark:bg-red-700', price: 300 },
   ]
 
   // Pattern options
@@ -97,18 +116,28 @@ export default function SettingsPage() {
     { id: 'squares', name: 'Squares', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
     { id: 'flowers', name: 'Flowers', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210%22%20r%3D%223%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%223%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2217%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%223%22%20cy%3D%2210%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2210%22%20r%3D%222%22%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
     { id: 'hearts', name: 'Hearts', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%20d%3D%22M10%2018l-1.5-1.4C4.5%2012.8%202%2010.5%202%207.5%202%205%204%203%206.5%203c1.5%200%202.9.8%203.5%202.1.6-1.3%202-2.1%203.5-2.1C16%203%2018%205%2018%207.5c0%203-2.5%205.3-6.5%209.1L10%2018z%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
+    { id: 'stars', name: 'Stars', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpolygon%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%20points%3D%2210%200%2013%207%2020%207%2015%2011%2017%2018%2010%2014%203%2018%205%2011%200%207%207%207%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
   ]
 
-  // Shop items
+  // Shop items (расширенные)
   const shopItems = {
     badges: [
       { id: 'star', name: 'Star Badge', icon: Star, price: 450, color: 'text-amber-400', description: 'A shining star badge' },
       { id: 'computer', name: 'Computer Badge', icon: Computer, price: 350, color: 'text-violet-500', description: 'Tech enthusiast badge' },
+      { id: 'heart', name: 'Heart Badge', icon: Heart, price: 800, color: 'text-pink-500', description: 'Loving heart badge' },
+      { id: 'crown', name: 'Crown Badge', icon: Crown, price: 3000, color: 'text-yellow-500', description: 'Royal crown badge' },
+      { id: 'diamond', name: 'Diamond Badge', icon: Diamond, price: 5000, color: 'text-sky-400', description: 'Rare diamond badge' },
+      { id: 'award', name: 'Award Badge', icon: Award, price: 1200, color: 'text-emerald-500', description: 'Prestigious award badge' },
+      { id: 'sparkles', name: 'Sparkle Badge', icon: Sparkles, price: 1500, color: 'text-purple-400', description: 'Magical sparkle badge' },
       { id: 'snowflake', name: 'Snowflake Badge', icon: Snowflake, price: 2000, color: 'text-cyan-400', description: 'Rare snowflake badge' },
       { id: 'verified', name: 'Verified Badge', icon: BadgeCheck, price: 9999, color: 'text-blue-500', description: 'Coming Soon!', disabled: true },
     ],
     themes: [
       { id: 'black', name: 'Black Theme', icon: Palette, price: 500, description: 'Unlock black theme for your profile' },
+      { id: 'blue', name: 'Blue Theme', icon: Palette, price: 300, description: 'Unlock blue theme for your profile' },
+      { id: 'purple', name: 'Purple Theme', icon: Palette, price: 300, description: 'Unlock purple theme for your profile' },
+      { id: 'orange', name: 'Orange Theme', icon: Palette, price: 300, description: 'Unlock orange theme for your profile' },
+      { id: 'red', name: 'Red Theme', icon: Palette, price: 300, description: 'Unlock red theme for your profile' },
     ],
     achievements: [
       { id: 'shopkeeper', name: "Shopkeepers' Favorite", icon: ShoppingCart, price: 500, description: 'Spent 500 Origins in shop' },
@@ -137,7 +166,7 @@ export default function SettingsPage() {
         setShopUnlocked(data.shop_unlocked || false)
         setSpentOrigins(data.spent_origins || 0)
         setHiddenBadges(data.hidden_badges || [])
-        setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified'])
+        setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart'])
       }
       
       await loadOriginsBalance(user.id)
@@ -146,6 +175,47 @@ export default function SettingsPage() {
     }
     load()
   }, [])
+
+  async function loadLeaderboard() {
+    setLoadingLeaderboard(true)
+    
+    // Топ по фоткам
+    const { data: photosTop } = await supabase
+      .from('profiles')
+      .select('id, name, username, avatar_url')
+      .order('photo_count', { ascending: false })
+      .limit(5)
+    
+    // Топ по свайпам
+    const { data: swipesTop } = await supabase
+      .from('profiles')
+      .select('id, name, username, avatar_url, swipe_count')
+      .order('swipe_count', { ascending: false })
+      .limit(5)
+    
+    // Топ по Origins
+    const { data: originsTop } = await supabase
+      .from('profiles')
+      .select('id, name, username, avatar_url, origins_balance')
+      .order('origins_balance', { ascending: false })
+      .limit(5)
+    
+    // Топ по подписчикам
+    const { data: followersTop } = await supabase
+      .from('profiles')
+      .select('id, name, username, avatar_url, followers_count')
+      .order('followers_count', { ascending: false })
+      .limit(5)
+    
+    setLeaderboardData({
+      photos: photosTop || [],
+      swipes: swipesTop || [],
+      origins: originsTop || [],
+      followers: followersTop || []
+    })
+    
+    setLoadingLeaderboard(false)
+  }
 
   async function loadDecorations() {
     const { data } = await supabase
@@ -557,6 +627,18 @@ export default function SettingsPage() {
         </form>
       </div>
 
+      {/* Leaderboard Button */}
+      <button
+        onClick={() => {
+          loadLeaderboard()
+          setLeaderboardModalOpen(true)
+        }}
+        className="w-full py-3 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-border mb-3 text-sm font-medium transition-all flex items-center justify-center gap-2 text-foreground hover:bg-white dark:hover:bg-gray-900"
+      >
+        <TrendingUp className="w-4 h-4" />
+        Leaderboard
+      </button>
+
       {/* My Badges Button */}
       <button
         onClick={() => setBadgesModalOpen(true)}
@@ -643,6 +725,157 @@ export default function SettingsPage() {
         <LogOut className="w-4 h-4" />
         Sign Out
       </button>
+
+      {/* Leaderboard Modal */}
+      {leaderboardModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setLeaderboardModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-border p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-yellow-500" />
+                Leaderboard
+              </h2>
+              <button onClick={() => setLeaderboardModalOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4">
+              {loadingLeaderboard ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <>
+                  {/* Top by Photos */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-green-500" />
+                      Most Photos
+                    </h3>
+                    <div className="space-y-2">
+                      {leaderboardData.photos.map((user, idx) => (
+                        <div key={user.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 text-sm font-bold text-yellow-500">#{idx + 1}</span>
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
+                              {user.avatar_url ? (
+                                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs">
+                                  {user.name?.[0] || '?'}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{user.name}</p>
+                              <p className="text-xs text-muted-foreground">@{user.username}</p>
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">{user.photo_count || 0} photos</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Top by Swipes */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Flame className="w-4 h-4 text-orange-500" />
+                      Most Swipes
+                    </h3>
+                    <div className="space-y-2">
+                      {leaderboardData.swipes.map((user, idx) => (
+                        <div key={user.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 text-sm font-bold text-yellow-500">#{idx + 1}</span>
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
+                              {user.avatar_url ? (
+                                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs">
+                                  {user.name?.[0] || '?'}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{user.name}</p>
+                              <p className="text-xs text-muted-foreground">@{user.username}</p>
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">{user.swipe_count || 0} swipes</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Top by Origins */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Coins className="w-4 h-4 text-amber-500" />
+                      Richest (Origins)
+                    </h3>
+                    <div className="space-y-2">
+                      {leaderboardData.origins.map((user, idx) => (
+                        <div key={user.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 text-sm font-bold text-yellow-500">#{idx + 1}</span>
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
+                              {user.avatar_url ? (
+                                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs">
+                                  {user.name?.[0] || '?'}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{user.name}</p>
+                              <p className="text-xs text-muted-foreground">@{user.username}</p>
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">{user.origins_balance?.toFixed(1) || 0} Origins</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Top by Followers */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4 text-blue-500" />
+                      Most Followers
+                    </h3>
+                    <div className="space-y-2">
+                      {leaderboardData.followers.map((user, idx) => (
+                        <div key={user.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 text-sm font-bold text-yellow-500">#{idx + 1}</span>
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
+                              {user.avatar_url ? (
+                                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs">
+                                  {user.name?.[0] || '?'}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{user.name}</p>
+                              <p className="text-xs text-muted-foreground">@{user.username}</p>
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold">{user.followers_count || 0} followers</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* My Badges Modal */}
       {badgesModalOpen && (
