@@ -408,11 +408,42 @@ export default function SettingsPage() {
       setPurchasing(null)
       return false
     }
-    if (type === 'pet' && purchasedPets.includes(itemId)) {
-      alert('You already own this pet!')
-      setPurchasing(null)
-      return false
-    }
+ if (type === 'pet') {
+  // Сначала проверяем, есть ли уже такой питомец в БД
+  const { data: existingPet } = await supabase
+    .from('user_pets')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('pet_id', itemId)
+    .maybeSingle()
+  
+  if (existingPet) {
+    alert('You already own this pet!')
+    setPurchasing(null)
+    return false
+  }
+  
+  // Добавляем питомца пользователю
+  const { error: petError } = await supabase
+    .from('user_pets')
+    .insert({
+      user_id: userId,
+      pet_id: itemId,
+      is_active: purchasedPets.length === 0, // первый питомец становится активным
+      is_hidden: false
+    })
+  
+  if (petError) {
+    console.error('Error adding pet:', petError)
+    alert('Error adding pet!')
+    setPurchasing(null)
+    return false
+  }
+  
+  // Обновляем локальное состояние
+  setPurchasedPets(prev => [...prev, itemId])
+  alert(`🎉 You got a ${petName}! Check your profile.`)
+}
 
     const newSpent = spentOrigins + price
     const newBalance = maxOriginsBalance - newSpent
