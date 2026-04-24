@@ -63,7 +63,6 @@ export default function SettingsPage() {
   const [purchasedBadges, setPurchasedBadges] = useState<string[]>([])
   const [unlockedThemes, setUnlockedThemes] = useState<string[]>(['default', 'pink', 'gray', 'green'])
   const [purchasedAchievements, setPurchasedAchievements] = useState<string[]>([])
-  const [purchasedPets, setPurchasedPets] = useState<string[]>([])
   
   // Badges management
   const [hiddenBadges, setHiddenBadges] = useState<string[]>([])
@@ -81,7 +80,7 @@ export default function SettingsPage() {
   })
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false)
 
-  // Badge config
+  // Badge config for display
   const BADGE_DISPLAY: Record<string, { name: string; icon: React.ElementType; color: string; price?: number; description?: string }> = {
     star: { name: 'Star Badge', icon: Star, color: 'text-amber-400', price: 450, description: 'A shining star badge' },
     computer: { name: 'Computer Badge', icon: Computer, color: 'text-violet-500', price: 350, description: 'Tech enthusiast badge' },
@@ -143,12 +142,6 @@ export default function SettingsPage() {
       { id: 'buyer', name: 'Buyer', icon: ShoppingBag, price: 200, description: 'Made first purchase' },
       { id: 'shopping', name: 'Shopping', icon: Zap, price: 400, description: 'Bought 3 items' },
     ],
-    pets: [
-      { id: 'dog', name: 'Dog', image: '/dog.png', price: 500, rarity: 'common', description: 'Your loyal companion' },
-      { id: 'cat', name: 'Cat', image: '/cat.png', price: 500, rarity: 'common', description: 'Purrfect friend' },
-      { id: 'bat', name: 'Bat', image: '/bat.png', price: 1200, rarity: 'rare', description: 'Night flyer' },
-      { id: 'owl', name: 'Owl', image: '/owl.png', price: 1500, rarity: 'epic', description: 'Wise companion' },
-    ]
   }
 
   useEffect(() => {
@@ -157,38 +150,21 @@ export default function SettingsPage() {
       if (!user) return
       setUserId(user.id)
       
-      // Загружаем профиль
-      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      if (profileData) {
-        setName(profileData.name ?? '')
-        setUsername(profileData.username ?? '')
-        setBio(profileData.bio ?? '')
-        setAvatarUrl(profileData.avatar_url)
-        setPurchasedBadges(profileData.purchased_badges || [])
-        setUnlockedThemes(profileData.unlocked_themes || ['default', 'pink', 'gray', 'green'])
-        setPurchasedAchievements(profileData.purchased_achievements || [])
-        setSelectedTheme(profileData.theme_preference || 'default')
-        setSelectedPattern(profileData.pattern_preference || 'none')
-        setShopUnlocked(profileData.shop_unlocked || false)
-        setSpentOrigins(profileData.spent_origins || 0)
-        setHiddenBadges(profileData.hidden_badges || [])
-        if (profileData.badges_order) {
-          setBadgesOrder(profileData.badges_order)
-        }
-      }
-      
-      // Загружаем купленных питомцев (ВАЖНО!)
-      const { data: userPets } = await supabase
-        .from('user_pets')
-        .select('pet_id')
-        .eq('user_id', user.id)
-      
-      console.log('Loaded pets from DB:', userPets) // Проверь в консоли
-      
-      if (userPets && userPets.length > 0) {
-        setPurchasedPets(userPets.map(p => p.pet_id))
-      } else {
-        setPurchasedPets([])
+      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (data) {
+        setName(data.name ?? '')
+        setUsername(data.username ?? '')
+        setBio(data.bio ?? '')
+        setAvatarUrl(data.avatar_url)
+        setPurchasedBadges(data.purchased_badges || [])
+        setUnlockedThemes(data.unlocked_themes || ['default', 'pink', 'gray', 'green'])
+        setPurchasedAchievements(data.purchased_achievements || [])
+        setSelectedTheme(data.theme_preference || 'default')
+        setSelectedPattern(data.pattern_preference || 'none')
+        setShopUnlocked(data.shop_unlocked || false)
+        setSpentOrigins(data.spent_origins || 0)
+        setHiddenBadges(data.hidden_badges || [])
+        setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award'])
       }
       
       await loadOriginsBalance(user.id)
@@ -390,7 +366,7 @@ export default function SettingsPage() {
     }
   }
 
-  async function purchaseItem(type: string, itemId: string, price: number, petName?: string) {
+  async function purchaseItem(type: string, itemId: string, price: number) {
     if (originsBalance < price) {
       alert(`Not enough Origins! You need ${(price - originsBalance).toFixed(1)} more.`)
       return false
@@ -398,7 +374,6 @@ export default function SettingsPage() {
 
     setPurchasing(itemId)
 
-    // Проверка на уже купленное
     if (type === 'badge' && purchasedBadges.includes(itemId)) {
       alert('You already own this badge!')
       setPurchasing(null)
@@ -414,22 +389,7 @@ export default function SettingsPage() {
       setPurchasing(null)
       return false
     }
-    if (type === 'pet') {
-      const { data: existingPet } = await supabase
-        .from('user_pets')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('pet_id', itemId)
-        .maybeSingle()
-      
-      if (existingPet) {
-        alert('You already own this pet!')
-        setPurchasing(null)
-        return false
-      }
-    }
 
-    // Списываем Origins
     const newSpent = spentOrigins + price
     const newBalance = maxOriginsBalance - newSpent
     
@@ -450,7 +410,6 @@ export default function SettingsPage() {
     setSpentOrigins(newSpent)
     setOriginsBalance(newBalance)
 
-    // Добавляем покупку
     if (type === 'badge') {
       const newBadges = [...purchasedBadges, itemId]
       setPurchasedBadges(newBadges)
@@ -467,7 +426,6 @@ export default function SettingsPage() {
           .update({ badges_order: newOrder })
           .eq('id', userId)
       }
-      alert('Purchase successful! 🎉')
     }
 
     if (type === 'theme') {
@@ -477,7 +435,6 @@ export default function SettingsPage() {
         .from('profiles')
         .update({ unlocked_themes: newThemes })
         .eq('id', userId)
-      alert('Theme unlocked! 🎉')
     }
 
     if (type === 'achievement') {
@@ -501,32 +458,9 @@ export default function SettingsPage() {
           achievement_name: achievementName,
           achieved_at: new Date().toISOString()
         })
-      alert('Achievement unlocked! 🎉')
     }
 
-    if (type === 'pet') {
-      // Добавляем питомца в БД
-      const { error: petError } = await supabase
-        .from('user_pets')
-        .insert({
-          user_id: userId,
-          pet_id: itemId,
-          is_active: purchasedPets.length === 0,
-          is_hidden: false
-        })
-      
-      if (petError) {
-        console.error('Error adding pet:', petError)
-        alert('Error adding pet!')
-        setPurchasing(null)
-        return false
-      }
-      
-      // Обновляем локальное состояние
-      setPurchasedPets(prev => [...prev, itemId])
-      alert(`🎉 You got a ${petName}! Check your profile.`)
-    }
-
+    alert('Purchase successful! 🎉')
     setPurchasing(null)
     return true
   }
@@ -1024,32 +958,44 @@ export default function SettingsPage() {
                   Badges
                 </h3>
                 <div className="space-y-2">
-                  {shopItems.badges.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 rounded-xl border border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                          <item.icon className={`w-5 h-5 ${item.color}`} />
+                  {shopItems.badges.map((item) => {
+                    const Icon = item.icon
+                    const isOwned = purchasedBadges.includes(item.id)
+                    const canAfford = originsBalance >= item.price
+                    const isDisabled = item.disabled
+                    
+                    return (
+                      <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border ${isOwned ? 'border-green-500/30 bg-green-500/5' : 'border-border'} ${isDisabled ? 'opacity-50' : ''}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <Icon className={`w-5 h-5 ${item.color}`} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">{item.description}</p>
-                        </div>
+                        {isOwned ? (
+                          <span className="text-xs text-green-500 font-medium">✓ Owned</span>
+                        ) : isDisabled ? (
+                          <span className="text-xs text-muted-foreground">Coming Soon</span>
+                        ) : (
+                          <button
+                            onClick={() => purchaseItem('badge', item.id, item.price)}
+                            disabled={purchasing === item.id || !canAfford}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 ${
+                              canAfford 
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                            }`}
+                          >
+                            <Coins className="w-3 h-3" />
+                            {item.price}
+                          </button>
+                        )}
                       </div>
-                      {purchasedBadges.includes(item.id) ? (
-                        <span className="text-xs text-green-500">✓ Owned</span>
-                      ) : item.disabled ? (
-                        <span className="text-xs text-muted-foreground">Soon</span>
-                      ) : (
-                        <button
-                          onClick={() => purchaseItem('badge', item.id, item.price)}
-                          disabled={purchasing === item.id || originsBalance < item.price}
-                          className="px-3 py-1 rounded-lg bg-primary text-primary-foreground text-xs"
-                        >
-                          <Coins className="w-3 h-3 inline" /> {item.price}
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 
@@ -1060,30 +1006,41 @@ export default function SettingsPage() {
                   Themes
                 </h3>
                 <div className="space-y-2">
-                  {shopItems.themes.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 rounded-xl border border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                          <item.icon className="w-5 h-5" />
+                  {shopItems.themes.map((item) => {
+                    const Icon = item.icon
+                    const isOwned = unlockedThemes.includes(item.id)
+                    const canAfford = originsBalance >= item.price
+                    
+                    return (
+                      <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border ${isOwned ? 'border-green-500/30 bg-green-500/5' : 'border-border'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">{item.description}</p>
-                        </div>
+                        {isOwned ? (
+                          <span className="text-xs text-green-500 font-medium">✓ Unlocked</span>
+                        ) : (
+                          <button
+                            onClick={() => purchaseItem('theme', item.id, item.price)}
+                            disabled={purchasing === item.id || !canAfford}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 ${
+                              canAfford 
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                            }`}
+                          >
+                            <Coins className="w-3 h-3" />
+                            {item.price}
+                          </button>
+                        )}
                       </div>
-                      {unlockedThemes.includes(item.id) ? (
-                        <span className="text-xs text-green-500">✓ Unlocked</span>
-                      ) : (
-                        <button
-                          onClick={() => purchaseItem('theme', item.id, item.price)}
-                          disabled={purchasing === item.id || originsBalance < item.price}
-                          className="px-3 py-1 rounded-lg bg-primary text-primary-foreground text-xs"
-                        >
-                          <Coins className="w-3 h-3 inline" /> {item.price}
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 
@@ -1094,59 +1051,35 @@ export default function SettingsPage() {
                   Achievements
                 </h3>
                 <div className="space-y-2">
-                  {shopItems.achievements.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 rounded-xl border border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                          <item.icon className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">{item.description}</p>
-                        </div>
-                      </div>
-                      {purchasedAchievements.includes(item.id) ? (
-                        <span className="text-xs text-green-500">✓ Owned</span>
-                      ) : (
-                        <button
-                          onClick={() => purchaseItem('achievement', item.id, item.price)}
-                          disabled={purchasing === item.id || originsBalance < item.price}
-                          className="px-3 py-1 rounded-lg bg-primary text-primary-foreground text-xs"
-                        >
-                          <Coins className="w-3 h-3 inline" /> {item.price}
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Pets Section */}
-              <div className="mb-6">
-                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <span>🐾</span>
-                  Pets
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {shopItems.pets.map((item) => {
-                    const isOwned = purchasedPets.includes(item.id)
+                  {shopItems.achievements.map((item) => {
+                    const Icon = item.icon
+                    const isOwned = purchasedAchievements.includes(item.id)
+                    const canAfford = originsBalance >= item.price
+                    
                     return (
-                      <div key={item.id} className="p-3 rounded-xl border border-border text-center">
-                        <div className="w-20 h-20 rounded-full overflow-hidden bg-muted mx-auto mb-2">
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                      <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border ${isOwned ? 'border-green-500/30 bg-green-500/5' : 'border-border'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                          </div>
                         </div>
-                        <p className="text-sm font-medium text-foreground">{item.name}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{item.rarity}</p>
-                        <p className="text-xs text-muted-foreground">{item.description}</p>
                         {isOwned ? (
-                          <span className="inline-block mt-2 text-xs text-green-500">✓ Owned</span>
+                          <span className="text-xs text-green-500 font-medium">✓ Owned</span>
                         ) : (
                           <button
-                            onClick={() => purchaseItem('pet', item.id, item.price, item.name)}
-                            disabled={purchasing === item.id || originsBalance < item.price}
-                            className="mt-2 px-3 py-1 rounded-lg bg-primary text-primary-foreground text-xs w-full"
+                            onClick={() => purchaseItem('achievement', item.id, item.price)}
+                            disabled={purchasing === item.id || !canAfford}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 ${
+                              canAfford 
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                            }`}
                           >
-                            <Coins className="w-3 h-3 inline mr-1" />
+                            <Coins className="w-3 h-3" />
                             {item.price}
                           </button>
                         )}
