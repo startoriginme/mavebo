@@ -23,7 +23,7 @@ const SWIPE_ACHIEVEMENTS = [
   { count: 500, title: "Photo God", icon: Trophy, color: "text-cyan-500", description: "Swiped 500 photos" },
 ]
 
-// Функция для форматирования чисел (1k, 1.6k и т.д.)
+// Функция для форматирования чисел
 function formatNumber(num: number): string {
   if (num >= 1000000) {
     return (num / 1000000).toFixed(1) + 'M'
@@ -40,10 +40,9 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   const [allPhotos, setAllPhotos] = useState<Photo[]>(initialAllPhotos)
   const [showAll, setShowAll] = useState(false)
   const [viewer, setViewer] = useState<Photo | null>(null)
-  const [hasMoreFollowing, setHasMoreFollowing] = useState(false)
-  const [hasMoreAll, setHasMoreAll] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [page, setPage] = useState({ following: 1, all: 1 })
+  const [hasMore, setHasMore] = useState(true)
+  const [page, setPage] = useState(1)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const lastPhotoRef = useRef<HTMLDivElement | null>(null)
 
@@ -61,22 +60,21 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   const photos = showAll ? allPhotos : followingPhotos
   const isFollowingEmpty = followingPhotos.length === 0
   const hasPhotos = photos.length > 0
-  const totalPosts = showAll ? allPhotos.length : followingPhotos.length
+  const totalPosts = photos.length
 
-  // Скрываем/показываем навигацию при входе/выходе из Tinder Mode
+  // Скрываем/показываем навигацию
   useEffect(() => {
     if (tinderMode) {
       document.body.classList.add('hide-nav')
     } else {
       document.body.classList.remove('hide-nav')
     }
-    
     return () => {
       document.body.classList.remove('hide-nav')
     }
   }, [tinderMode])
 
-  // Загружаем счетчик свайпов пользователя
+  // Загружаем счетчик свайпов
   useEffect(() => {
     if (userId) {
       loadUserSwipeCount()
@@ -150,7 +148,6 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
     const newCount = swipeCount + 1
     setSwipeCount(newCount)
     await updateSwipeCount(newCount)
-    
     setDragOffset({ x: 0, y: 0 })
   }
 
@@ -182,41 +179,17 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
     setDragOffset({ x: 0, y: 0 })
   }
 
-  // Check if there are more photos to load
-  useEffect(() => {
-    setHasMoreFollowing(initialFollowingPhotos.length >= 20)
-    setHasMoreAll(initialAllPhotos.length >= 20)
-  }, [initialFollowingPhotos.length, initialAllPhotos.length])
-
-  // Load more photos when reaching the end
-// Load more photos when reaching the end
-const loadMorePhotos = useCallback(async () => {
-  if (loadingMore) return
-  
-  const currentPage = showAll ? page.all : page.following
-  const hasMore = showAll ? hasMoreAll : hasMoreFollowing
-  
-  if (!hasMore) return
-  
-  setLoadingMore(true)
-  
-  try {
-    const nextPage = currentPage + 1
-    const limit = 20
-    const offset = nextPage * limit
+  // Load more photos
+  const loadMorePhotos = useCallback(async () => {
+    if (loadingMore || !hasMore) return
     
-    let newPhotos: Photo[] = []
+    setLoadingMore(true)
     
-    // Получаем лайки пользователя
-    const { data: likes } = await supabase
-      .from('likes')
-      .select('photo_id')
-      .eq('user_id', userId)
-    
-    const likedPhotoIds = new Set(likes?.map(l => l.photo_id) || [])
-    
-    if (showAll) {
-      const { data, error } = await supabase
+    try {
+      const limit = 20
+      const offset = page * limit
+      
+      let query = supabase
         .from('photos')
         .select(`
           *,
@@ -224,19 +197,38 @@ const loadMorePhotos = useCallback(async () => {
         `)
         .eq('privacy', 'public')
         .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1)
       
-      if (!error && data) {
-        // Получаем ID всех новых фото
+      // Если не показываем все фото, фильтруем по подпискам
+      if (!showAll && followingPhotos.length > 0) {
+        const followedUserIds = [...new Set(followingPhotos.map(p => p.profile?.id).filter(Boolean))]
+        if (followedUserIds.length > 0) {
+          query = query.in('user_id', followedUserIds)
+        } else {
+          setLoadingMore(false)
+          return
+        }
+      }
+      
+      const { data, error } = await query.range(offset, offset + limit - 1)
+      
+      if (!error && data && data.length > 0) {
+        // Получаем ID новых фото
         const newPhotoIds = data.map(p => p.id)
         
-        // Получаем реальное количество лайков для каждого фото
+        // Получаем лайки пользователя
+        const { data: likes } = await supabase
+          .from('likes')
+          .select('photo_id')
+          .eq('user_id', userId)
+        
+        const likedPhotoIds = new Set(likes?.map(l => l.photo_id) || [])
+        
+        // Получаем количество лайков для каждого фото
         const { data: likesCounts } = await supabase
           .from('likes')
-          .select('photo_id', { count: 'exact', head: false })
+          .select('photo_id')
           .in('photo_id', newPhotoIds)
         
-        // Считаем количество лайков для каждого фото
         const likesCountMap = new Map()
         if (likesCounts) {
           likesCounts.forEach(like => {
@@ -244,76 +236,59 @@ const loadMorePhotos = useCallback(async () => {
           })
         }
         
-        newPhotos = data.map(photo => ({
+        const newPhotos = data.map(photo => ({
           ...photo,
           is_liked: likedPhotoIds.has(photo.id),
           likes_count: likesCountMap.get(photo.id) || 0
         }))
         
         // Фильтруем дубликаты
-        const existingIds = new Set(allPhotos.map(p => p.id))
+        const existingIds = new Set(photos.map(p => p.id))
         const uniqueNewPhotos = newPhotos.filter(photo => !existingIds.has(photo.id))
         
-        setAllPhotos(prev => [...prev, ...uniqueNewPhotos])
-        setPage(prev => ({ ...prev, all: nextPage }))
-        setHasMoreAll(data.length === limit)
-      }
-    } else if (followingPhotos.length > 0) {
-      const followedUserIds = [...new Set(followingPhotos.map(p => p.profile?.id).filter(Boolean))]
-      
-      if (followedUserIds.length > 0) {
-        const { data, error } = await supabase
-          .from('photos')
-          .select(`
-            *,
-            profile:profiles(id, name, username, avatar_url)
-          `)
-          .eq('privacy', 'public')
-          .in('user_id', followedUserIds)
-          .order('created_at', { ascending: false })
-          .range(offset, offset + limit - 1)
-        
-        if (!error && data) {
-          // Получаем ID всех новых фото
-          const newPhotoIds = data.map(p => p.id)
-          
-          // Получаем реальное количество лайков для каждого фото
-          const { data: likesCounts } = await supabase
-            .from('likes')
-            .select('photo_id', { count: 'exact', head: false })
-            .in('photo_id', newPhotoIds)
-          
-          // Считаем количество лайков для каждого фото
-          const likesCountMap = new Map()
-          if (likesCounts) {
-            likesCounts.forEach(like => {
-              likesCountMap.set(like.photo_id, (likesCountMap.get(like.photo_id) || 0) + 1)
-            })
-          }
-          
-          newPhotos = data.map(photo => ({
-            ...photo,
-            is_liked: likedPhotoIds.has(photo.id),
-            likes_count: likesCountMap.get(photo.id) || 0
-          }))
-          
-          // Фильтруем дубликаты
-          const existingIds = new Set(followingPhotos.map(p => p.id))
-          const uniqueNewPhotos = newPhotos.filter(photo => !existingIds.has(photo.id))
-          
+        if (showAll) {
+          setAllPhotos(prev => [...prev, ...uniqueNewPhotos])
+        } else {
           setFollowingPhotos(prev => [...prev, ...uniqueNewPhotos])
-          setPage(prev => ({ ...prev, following: nextPage }))
-          setHasMoreFollowing(data.length === limit)
         }
+        
+        setPage(prev => prev + 1)
+        setHasMore(data.length === limit)
+      } else {
+        setHasMore(false)
+      }
+    } catch (error) {
+      console.error('Error loading more photos:', error)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [loadingMore, hasMore, page, showAll, followingPhotos, photos, supabase, userId])
+
+  // Intersection observer
+  useEffect(() => {
+    if (!hasPhotos) return
+    
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMore && hasMore) {
+          loadMorePhotos()
+        }
+      },
+      { threshold: 0.1 }
+    )
+    
+    if (lastPhotoRef.current) {
+      observerRef.current.observe(lastPhotoRef.current)
+    }
+    
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect()
       }
     }
-  } catch (error) {
-    console.error('Error loading more photos:', error)
-  } finally {
-    setLoadingMore(false)
-  }
-}, [showAll, page, hasMoreAll, hasMoreFollowing, loadingMore, supabase, userId, followingPhotos, allPhotos])
-  async function toggleLike(photo: Photo, isInAll: boolean) {
+  }, [hasPhotos, loadingMore, hasMore, loadMorePhotos])
+
+  async function toggleLike(photo: Photo) {
     const isLiked = photo.is_liked
     const updater = (prev: Photo[]) =>
       prev.map((p) =>
@@ -331,12 +306,12 @@ const loadMorePhotos = useCallback(async () => {
     }
   }
 
-  // Toggle between following feed and all feed
   const toggleFeed = () => {
     setShowAll(!showAll)
+    setPage(1)
+    setHasMore(true)
   }
 
-  // Функция для открытия фото в новой вкладке
   const openPhotoInNewTab = (url: string) => {
     window.open(url, '_blank')
   }
@@ -579,7 +554,7 @@ const loadMorePhotos = useCallback(async () => {
           >
             <PhotoCard
               photo={photo}
-              onLike={() => toggleLike(photo, showAll)}
+              onLike={() => toggleLike(photo)}
               onOpen={() => setViewer(photo)}
               onOpenInNewTab={() => openPhotoInNewTab(photo.url)}
             />
@@ -592,7 +567,7 @@ const loadMorePhotos = useCallback(async () => {
           </div>
         )}
         
-        {!loadingMore && hasPhotos && ((showAll && !hasMoreAll) || (!showAll && !hasMoreFollowing)) && (
+        {!loadingMore && hasPhotos && !hasMore && (
           <div className="text-center py-6">
             <p className="text-xs text-muted-foreground">
               {showAll ? "You've seen all public posts" : "You've seen all posts from people you follow"}
