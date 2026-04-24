@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Photo } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { Heart, Images, Globe, Users, X, Heart as HeartIcon, Flame, Trophy, Sparkles, Camera, Star, Search, ExternalLink } from 'lucide-react'
@@ -40,13 +40,6 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   const [allPhotos, setAllPhotos] = useState<Photo[]>(initialAllPhotos)
   const [showAll, setShowAll] = useState(false)
   const [viewer, setViewer] = useState<Photo | null>(null)
-  const [hasMoreFollowing, setHasMoreFollowing] = useState(false)
-  const [hasMoreAll, setHasMoreAll] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [page, setPage] = useState({ following: 1, all: 1 })
-  const observerRef = useRef<IntersectionObserver | null>(null)
-  const lastPhotoRef = useRef<HTMLDivElement | null>(null)
-  const loadedPhotoIdsRef = useRef<Set<string>>(new Set())
 
   // Tinder Mode states
   const [tinderMode, setTinderMode] = useState(false)
@@ -83,17 +76,6 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
       loadUserSwipeCount()
     }
   }, [userId])
-
-  // Инициализируем Set с ID уже загруженных фото
-  useEffect(() => {
-    loadedPhotoIdsRef.current.clear()
-    allPhotos.forEach(photo => loadedPhotoIdsRef.current.add(photo.id))
-  }, [allPhotos])
-
-  useEffect(() => {
-    loadedPhotoIdsRef.current.clear()
-    followingPhotos.forEach(photo => loadedPhotoIdsRef.current.add(photo.id))
-  }, [followingPhotos])
 
   async function loadUserSwipeCount() {
     const { data } = await supabase
@@ -194,127 +176,6 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
     setDragOffset({ x: 0, y: 0 })
   }
 
-  // Check if there are more photos to load
-  useEffect(() => {
-    setHasMoreFollowing(initialFollowingPhotos.length >= 20)
-    setHasMoreAll(initialAllPhotos.length >= 20)
-  }, [initialFollowingPhotos.length, initialAllPhotos.length])
-
-  // Load more photos when reaching the end
-  const loadMorePhotos = useCallback(async () => {
-    if (loadingMore) return
-    
-    const currentPage = showAll ? page.all : page.following
-    const hasMore = showAll ? hasMoreAll : hasMoreFollowing
-    
-    if (!hasMore) return
-    
-    setLoadingMore(true)
-    
-    try {
-      const nextPage = currentPage + 1
-      const limit = 20
-      const offset = nextPage * limit
-      
-      let newPhotos: Photo[] = []
-      
-      // Получаем актуальные лайки пользователя
-      const { data: likes } = await supabase
-        .from('likes')
-        .select('photo_id')
-        .eq('user_id', userId)
-      
-      const likedPhotoIds = new Set(likes?.map(l => l.photo_id) || [])
-      
-      if (showAll) {
-        const { data, error } = await supabase
-          .from('photos')
-          .select(`
-            *,
-            profile:profiles(id, name, username, avatar_url)
-          `)
-          .eq('privacy', 'public')
-          .order('created_at', { ascending: false })
-          .range(offset, offset + limit - 1)
-        
-        if (!error && data) {
-          newPhotos = data.map(photo => ({
-            ...photo,
-            is_liked: likedPhotoIds.has(photo.id),
-            likes_count: photo.likes_count || 0
-          }))
-          
-          // Фильтруем дубликаты
-          const uniqueNewPhotos = newPhotos.filter(photo => !loadedPhotoIdsRef.current.has(photo.id))
-          uniqueNewPhotos.forEach(photo => loadedPhotoIdsRef.current.add(photo.id))
-          
-          setAllPhotos(prev => [...prev, ...uniqueNewPhotos])
-          setPage(prev => ({ ...prev, all: nextPage }))
-          setHasMoreAll(data.length === limit)
-        }
-      } else if (followingPhotos.length > 0) {
-        const followedUserIds = [...new Set(followingPhotos.map(p => p.profile?.id).filter(Boolean))]
-        
-        if (followedUserIds.length > 0) {
-          const { data, error } = await supabase
-            .from('photos')
-            .select(`
-              *,
-              profile:profiles(id, name, username, avatar_url)
-            `)
-            .eq('privacy', 'public')
-            .in('user_id', followedUserIds)
-            .order('created_at', { ascending: false })
-            .range(offset, offset + limit - 1)
-          
-          if (!error && data) {
-            newPhotos = data.map(photo => ({
-              ...photo,
-              is_liked: likedPhotoIds.has(photo.id),
-              likes_count: photo.likes_count || 0
-            }))
-            
-            // Фильтруем дубликаты
-            const uniqueNewPhotos = newPhotos.filter(photo => !loadedPhotoIdsRef.current.has(photo.id))
-            uniqueNewPhotos.forEach(photo => loadedPhotoIdsRef.current.add(photo.id))
-            
-            setFollowingPhotos(prev => [...prev, ...uniqueNewPhotos])
-            setPage(prev => ({ ...prev, following: nextPage }))
-            setHasMoreFollowing(data.length === limit)
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error loading more photos:', error)
-    } finally {
-      setLoadingMore(false)
-    }
-  }, [showAll, page, hasMoreAll, hasMoreFollowing, loadingMore, supabase, userId, followingPhotos, allPhotos])
-
-  // Intersection observer for infinite scroll
-  useEffect(() => {
-    if (!hasPhotos) return
-    
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !loadingMore) {
-          loadMorePhotos()
-        }
-      },
-      { threshold: 0.1 }
-    )
-    
-    if (lastPhotoRef.current) {
-      observerRef.current.observe(lastPhotoRef.current)
-    }
-    
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect()
-      }
-    }
-  }, [hasPhotos, loadingMore, loadMorePhotos])
-
   async function toggleLike(photo: Photo, isInAll: boolean) {
     const isLiked = photo.is_liked
     const updater = (prev: Photo[]) =>
@@ -344,128 +205,128 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   }
 
   // Tinder Mode UI
- // Tinder Mode UI
-if (tinderMode) {
-  const currentPhoto = tinderPhotos[currentPhotoIndex]
-  const rotate = dragOffset.x * 0.05
+  if (tinderMode) {
+    const currentPhoto = tinderPhotos[currentPhotoIndex]
+    const rotate = dragOffset.x * 0.05
 
-  if (!currentPhoto) return null
+    if (!currentPhoto) return null
 
-  return (
-    <main className="min-h-screen bg-gradient-to-br from-purple-900/20 via-background to-blue-900/20">
-      {/* Кнопка выхода */}
-      <div className="fixed top-4 right-4 z-50">
-        <button
-          onClick={exitTinderMode}
-          className="glass rounded-full p-3 hover:bg-primary/20 transition-all"
-        >
-          <X className="w-6 h-6" />
-        </button>
-      </div>
-
-      {/* Счетчик свайпов */}
-      <div className="fixed top-4 left-4 z-50">
-        <div className="glass rounded-full px-4 py-2 flex items-center gap-2">
-          <Flame className="w-5 h-5 text-orange-500" />
-          <span className="font-bold">{swipeCount}</span>
-        </div>
-      </div>
-
-      {/* Ачивка */}
-      {showAchievement && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
-          <div className="glass rounded-2xl p-4 flex items-center gap-3">
-            <showAchievement.icon className={`w-8 h-8 ${showAchievement.color}`} />
-            <div>
-              <p className="font-bold text-foreground">Achievement Unlocked!</p>
-              <p className="text-sm text-muted-foreground">{showAchievement.title}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Карточка для свайпа */}
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div
-          ref={cardRef}
-          className="relative w-full max-w-md aspect-[3/4] cursor-grab active:cursor-grabbing"
-          onMouseDown={handleDragStart}
-          onMouseMove={handleDragMove}
-          onMouseUp={handleDragEnd}
-          onTouchStart={handleDragStart}
-          onTouchMove={handleDragMove}
-          onTouchEnd={handleDragEnd}
-        >
-          <div
-            className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl transition-all"
-            style={{
-              transform: `translate(${dragOffset.x}px, ${dragOffset.y}px) rotate(${rotate}deg)`,
-              transition: isDragging ? 'none' : 'all 0.3s ease-out',
-            }}
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-purple-900/20 via-background to-blue-900/20">
+        {/* Кнопка выхода */}
+        <div className="fixed top-4 right-4 z-50">
+          <button
+            onClick={exitTinderMode}
+            className="glass rounded-full p-3 hover:bg-primary/20 transition-all"
           >
-            <img
-              src={currentPhoto.url}
-              alt={currentPhoto.name}
-              className="w-full h-full object-cover"
-            />
-            
-            {/* Индикатор свайпа */}
-            {dragOffset.x > 50 && (
-              <div className="absolute top-8 left-8 bg-green-500/80 backdrop-blur-sm rounded-lg px-4 py-2 transform -rotate-12">
-                <HeartIcon className="w-8 h-8 text-white" />
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Счетчик свайпов */}
+        <div className="fixed top-4 left-4 z-50">
+          <div className="glass rounded-full px-4 py-2 flex items-center gap-2">
+            <Flame className="w-5 h-5 text-orange-500" />
+            <span className="font-bold">{swipeCount}</span>
+          </div>
+        </div>
+
+        {/* Ачивка */}
+        {showAchievement && (
+          <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
+            <div className="glass rounded-2xl p-4 flex items-center gap-3">
+              <showAchievement.icon className={`w-8 h-8 ${showAchievement.color}`} />
+              <div>
+                <p className="font-bold text-foreground">Achievement Unlocked!</p>
+                <p className="text-sm text-muted-foreground">{showAchievement.title}</p>
               </div>
-            )}
-            {dragOffset.x < -50 && (
-              <div className="absolute top-8 right-8 bg-red-500/80 backdrop-blur-sm rounded-lg px-4 py-2 transform rotate-12">
-                <X className="w-8 h-8 text-white" />
-              </div>
-            )}
-            
-            {/* Информация о фото */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-              <p className="text-white font-semibold text-lg">{currentPhoto.name}</p>
-              <div className="flex items-center gap-2 mt-2">
-                {currentPhoto.profile?.avatar_url && (
-                  <img
-                    src={currentPhoto.profile.avatar_url}
-                    alt=""
-                    className="w-6 h-6 rounded-full"
-                  />
-                )}
-                <p className="text-white/90 text-sm">@{currentPhoto.profile?.username}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Карточка для свайпа */}
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div
+            ref={cardRef}
+            className="relative w-full max-w-md aspect-[3/4] cursor-grab active:cursor-grabbing"
+            onMouseDown={handleDragStart}
+            onMouseMove={handleDragMove}
+            onMouseUp={handleDragEnd}
+            onTouchStart={handleDragStart}
+            onTouchMove={handleDragMove}
+            onTouchEnd={handleDragEnd}
+          >
+            <div
+              className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl transition-all"
+              style={{
+                transform: `translate(${dragOffset.x}px, ${dragOffset.y}px) rotate(${rotate}deg)`,
+                transition: isDragging ? 'none' : 'all 0.3s ease-out',
+              }}
+            >
+              <img
+                src={currentPhoto.url}
+                alt={currentPhoto.name}
+                className="w-full h-full object-cover"
+              />
+              
+              {/* Индикатор свайпа */}
+              {dragOffset.x > 50 && (
+                <div className="absolute top-8 left-8 bg-green-500/80 backdrop-blur-sm rounded-lg px-4 py-2 transform -rotate-12">
+                  <HeartIcon className="w-8 h-8 text-white" />
+                </div>
+              )}
+              {dragOffset.x < -50 && (
+                <div className="absolute top-8 right-8 bg-red-500/80 backdrop-blur-sm rounded-lg px-4 py-2 transform rotate-12">
+                  <X className="w-8 h-8 text-white" />
+                </div>
+              )}
+              
+              {/* Информация о фото */}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                <p className="text-white font-semibold text-lg">{currentPhoto.name}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  {currentPhoto.profile?.avatar_url && (
+                    <img
+                      src={currentPhoto.profile.avatar_url}
+                      alt=""
+                      className="w-6 h-6 rounded-full"
+                    />
+                  )}
+                  <p className="text-white/90 text-sm">@{currentPhoto.profile?.username}</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Кнопки действий */}
-      <div className="fixed bottom-8 left-0 right-0 flex justify-center gap-8">
-        <button
-          onClick={() => handleSwipe('left')}
-          className="w-16 h-16 rounded-full bg-red-500/20 backdrop-blur-sm border border-red-500/50 flex items-center justify-center hover:scale-110 transition-all"
-        >
-          <X className="w-8 h-8 text-red-500" />
-        </button>
-        <button
-          onClick={() => handleSwipe('right')}
-          className="w-16 h-16 rounded-full bg-green-500/20 backdrop-blur-sm border border-green-500/50 flex items-center justify-center hover:scale-110 transition-all"
-        >
-          <HeartIcon className="w-8 h-8 text-green-500" />
-        </button>
-      </div>
-
-      {/* Индикатор, что фото закончились */}
-      {currentPhotoIndex === tinderPhotos.length - 1 && (
-        <div className="fixed bottom-32 left-0 right-0 text-center">
-          <div className="glass rounded-full px-4 py-2 inline-block">
-            <p className="text-xs text-muted-foreground">You've seen all photos! Starting over...</p>
-          </div>
+        {/* Кнопки действий */}
+        <div className="fixed bottom-8 left-0 right-0 flex justify-center gap-8">
+          <button
+            onClick={() => handleSwipe('left')}
+            className="w-16 h-16 rounded-full bg-red-500/20 backdrop-blur-sm border border-red-500/50 flex items-center justify-center hover:scale-110 transition-all"
+          >
+            <X className="w-8 h-8 text-red-500" />
+          </button>
+          <button
+            onClick={() => handleSwipe('right')}
+            className="w-16 h-16 rounded-full bg-green-500/20 backdrop-blur-sm border border-green-500/50 flex items-center justify-center hover:scale-110 transition-all"
+          >
+            <HeartIcon className="w-8 h-8 text-green-500" />
+          </button>
         </div>
-      )}
-    </main>
-  )
-}
+
+        {/* Индикатор, что фото закончились */}
+        {currentPhotoIndex === tinderPhotos.length - 1 && (
+          <div className="fixed bottom-32 left-0 right-0 text-center">
+            <div className="glass rounded-full px-4 py-2 inline-block">
+              <p className="text-xs text-muted-foreground">You've seen all photos! Starting over...</p>
+            </div>
+          </div>
+        )}
+      </main>
+    )
+  }
+
   // Empty state with option to show all feed
   if (isFollowingEmpty && !showAll) {
     return (
@@ -584,11 +445,8 @@ if (tinderMode) {
       )}
 
       <div className="flex flex-col gap-5">
-        {photos.map((photo, index) => (
-          <div
-            key={photo.id}
-            ref={index === photos.length - 1 ? lastPhotoRef : null}
-          >
+        {photos.map((photo) => (
+          <div key={photo.id}>
             <PhotoCard
               photo={photo}
               onLike={() => toggleLike(photo, showAll)}
@@ -597,38 +455,6 @@ if (tinderMode) {
             />
           </div>
         ))}
-        
-        {loadingMore && (
-          <div className="flex justify-center py-4">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
-        
-        {!loadingMore && hasPhotos && ((showAll && !hasMoreAll) || (!showAll && !hasMoreFollowing)) && (
-          <div className="text-center py-6">
-            <p className="text-xs text-muted-foreground">
-              {showAll ? "You've seen all public posts" : "You've seen all posts from people you follow"}
-            </p>
-            {!showAll && followingPhotos.length > 0 && (
-              <button
-                onClick={toggleFeed}
-                className="mt-3 text-sm text-primary hover:underline flex items-center justify-center gap-1"
-              >
-                <Globe className="w-3.5 h-3.5" />
-                Browse all posts
-              </button>
-            )}
-            {showAll && !isFollowingEmpty && (
-              <button
-                onClick={toggleFeed}
-                className="mt-3 text-sm text-primary hover:underline flex items-center justify-center gap-1"
-              >
-                <Users className="w-3.5 h-3.5" />
-                Back to following feed
-              </button>
-            )}
-          </div>
-        )}
       </div>
 
       {viewer && <PhotoViewer photo={viewer} onClose={() => setViewer(null)} />}
