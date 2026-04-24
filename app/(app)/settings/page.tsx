@@ -63,6 +63,7 @@ export default function SettingsPage() {
   const [purchasedBadges, setPurchasedBadges] = useState<string[]>([])
   const [unlockedThemes, setUnlockedThemes] = useState<string[]>(['default', 'pink', 'gray', 'green'])
   const [purchasedAchievements, setPurchasedAchievements] = useState<string[]>([])
+  const [purchasedPets, setPurchasedPets] = useState<string[]>([])
   
   // Badges management
   const [hiddenBadges, setHiddenBadges] = useState<string[]>([])
@@ -141,6 +142,12 @@ export default function SettingsPage() {
       { id: 'shopkeeper', name: "Shopkeepers' Favorite", icon: ShoppingCart, price: 500, description: 'Spent 500 Origins in shop' },
       { id: 'buyer', name: 'Buyer', icon: ShoppingBag, price: 200, description: 'Made first purchase' },
       { id: 'shopping', name: 'Shopping', icon: Zap, price: 400, description: 'Bought 3 items' },
+    ],
+    pets: [
+      { id: 'dog', name: 'Dog', image: '/dog.png', price: 500, rarity: 'common', description: 'Your loyal companion' },
+      { id: 'cat', name: 'Cat', image: '/cat.png', price: 500, rarity: 'common', description: 'Purrfect friend' },
+      { id: 'bat', name: 'Bat', image: '/bat.png', price: 1200, rarity: 'rare', description: 'Night flyer' },
+      { id: 'owl', name: 'Owl', image: '/owl.png', price: 1500, rarity: 'epic', description: 'Wise companion' },
     ]
   }
 
@@ -165,6 +172,16 @@ export default function SettingsPage() {
         setSpentOrigins(data.spent_origins || 0)
         setHiddenBadges(data.hidden_badges || [])
         setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award'])
+      }
+      
+      // Загружаем купленных питомцев
+      const { data: petsData } = await supabase
+        .from('user_pets')
+        .select('pet_id')
+        .eq('user_id', user.id)
+      
+      if (petsData) {
+        setPurchasedPets(petsData.map(p => p.pet_id))
       }
       
       await loadOriginsBalance(user.id)
@@ -368,7 +385,7 @@ export default function SettingsPage() {
     }
   }
 
-  async function purchaseItem(type: string, itemId: string, price: number) {
+  async function purchaseItem(type: string, itemId: string, price: number, petName?: string) {
     if (originsBalance < price) {
       alert(`Not enough Origins! You need ${(price - originsBalance).toFixed(1)} more.`)
       return false
@@ -388,6 +405,11 @@ export default function SettingsPage() {
     }
     if (type === 'achievement' && purchasedAchievements.includes(itemId)) {
       alert('You already have this achievement!')
+      setPurchasing(null)
+      return false
+    }
+    if (type === 'pet' && purchasedPets.includes(itemId)) {
+      alert('You already own this pet!')
       setPurchasing(null)
       return false
     }
@@ -460,6 +482,22 @@ export default function SettingsPage() {
           achievement_name: achievementName,
           achieved_at: new Date().toISOString()
         })
+    }
+
+    if (type === 'pet') {
+      setPurchasedPets(prev => [...prev, itemId])
+      
+      // Добавляем питомца пользователю
+      await supabase
+        .from('user_pets')
+        .insert({
+          user_id: userId,
+          pet_id: itemId,
+          is_active: purchasedPets.length === 0, // первый питомец становится активным
+          is_hidden: false
+        })
+      
+      alert(`🎉 You got a ${petName}! Check your profile.`)
     }
 
     alert('Purchase successful! 🎉')
@@ -734,7 +772,6 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <>
-                  {/* Top by Photos */}
                   <div className="mb-6">
                     <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                       <Camera className="w-4 h-4 text-green-500" />
@@ -768,7 +805,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Top by Origins */}
                   <div className="mb-6">
                     <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                       <Coins className="w-4 h-4 text-amber-500" />
@@ -1084,6 +1120,51 @@ export default function SettingsPage() {
                             }`}
                           >
                             <Coins className="w-3 h-3" />
+                            {item.price}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Pets Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <span>🐾</span>
+                  Pets
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {shopItems.pets.map((item) => {
+                    const isOwned = purchasedPets.includes(item.id)
+                    const canAfford = originsBalance >= item.price
+                    
+                    return (
+                      <div key={item.id} className="p-3 rounded-xl border border-border text-center">
+                        <div className="w-20 h-20 rounded-full overflow-hidden bg-muted mx-auto mb-2">
+                          <img 
+                            src={item.image} 
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <p className="text-sm font-medium text-foreground">{item.name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{item.rarity}</p>
+                        <p className="text-xs text-muted-foreground">{item.description}</p>
+                        {isOwned ? (
+                          <span className="inline-block mt-2 text-xs text-green-500">✓ Owned</span>
+                        ) : (
+                          <button
+                            onClick={() => purchaseItem('pet', item.id, item.price, item.name)}
+                            disabled={purchasing === item.id || !canAfford}
+                            className={`mt-2 px-3 py-1 rounded-lg text-xs font-medium transition-all w-full ${
+                              canAfford 
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                            }`}
+                          >
+                            <Coins className="w-3 h-3 inline mr-1" />
                             {item.price}
                           </button>
                         )}
