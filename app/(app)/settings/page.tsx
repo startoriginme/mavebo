@@ -118,7 +118,7 @@ export default function SettingsPage() {
     { id: 'stars', name: 'Stars', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpolygon%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%20points%3D%2210%200%2013%207%2020%207%2015%2011%2017%2018%2010%2014%203%2018%205%2011%200%207%207%207%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
   ]
 
-  // Shop items (расширенные)
+  // Shop items
   const shopItems = {
     badges: [
       { id: 'star', name: 'Star Badge', icon: Star, price: 450, color: 'text-amber-400', description: 'A shining star badge' },
@@ -195,14 +195,12 @@ export default function SettingsPage() {
     setLoadingLeaderboard(true)
     
     try {
-      // Топ по фоткам
       const { data: photosTop } = await supabase
         .from('profiles')
         .select('id, name, username, avatar_url, photo_count')
         .order('photo_count', { ascending: false })
         .limit(5)
       
-      // Топ по Origins
       const { data: originsTop } = await supabase
         .from('profiles')
         .select('id, name, username, avatar_url, origins_balance')
@@ -408,42 +406,20 @@ export default function SettingsPage() {
       setPurchasing(null)
       return false
     }
- if (type === 'pet') {
-  // Сначала проверяем, есть ли уже такой питомец в БД
-  const { data: existingPet } = await supabase
-    .from('user_pets')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('pet_id', itemId)
-    .maybeSingle()
-  
-  if (existingPet) {
-    alert('You already own this pet!')
-    setPurchasing(null)
-    return false
-  }
-  
-  // Добавляем питомца пользователю
-  const { error: petError } = await supabase
-    .from('user_pets')
-    .insert({
-      user_id: userId,
-      pet_id: itemId,
-      is_active: purchasedPets.length === 0, // первый питомец становится активным
-      is_hidden: false
-    })
-  
-  if (petError) {
-    console.error('Error adding pet:', petError)
-    alert('Error adding pet!')
-    setPurchasing(null)
-    return false
-  }
-  
-  // Обновляем локальное состояние
-  setPurchasedPets(prev => [...prev, itemId])
-  alert(`🎉 You got a ${petName}! Check your profile.`)
-}
+    if (type === 'pet') {
+      const { data: existingPet } = await supabase
+        .from('user_pets')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('pet_id', itemId)
+        .maybeSingle()
+      
+      if (existingPet) {
+        alert('You already own this pet!')
+        setPurchasing(null)
+        return false
+      }
+    }
 
     const newSpent = spentOrigins + price
     const newBalance = maxOriginsBalance - newSpent
@@ -481,6 +457,7 @@ export default function SettingsPage() {
           .update({ badges_order: newOrder })
           .eq('id', userId)
       }
+      alert('Purchase successful! 🎉')
     }
 
     if (type === 'theme') {
@@ -490,6 +467,7 @@ export default function SettingsPage() {
         .from('profiles')
         .update({ unlocked_themes: newThemes })
         .eq('id', userId)
+      alert('Theme unlocked! 🎉')
     }
 
     if (type === 'achievement') {
@@ -513,25 +491,30 @@ export default function SettingsPage() {
           achievement_name: achievementName,
           achieved_at: new Date().toISOString()
         })
+      alert('Achievement unlocked! 🎉')
     }
 
     if (type === 'pet') {
-      setPurchasedPets(prev => [...prev, itemId])
-      
-      // Добавляем питомца пользователю
-      await supabase
+      const { error: petError } = await supabase
         .from('user_pets')
         .insert({
           user_id: userId,
           pet_id: itemId,
-          is_active: purchasedPets.length === 0, // первый питомец становится активным
+          is_active: purchasedPets.length === 0,
           is_hidden: false
         })
       
+      if (petError) {
+        console.error('Error adding pet:', petError)
+        alert('Error adding pet!')
+        setPurchasing(null)
+        return false
+      }
+      
+      setPurchasedPets(prev => [...prev, itemId])
       alert(`🎉 You got a ${petName}! Check your profile.`)
     }
 
-    alert('Purchase successful! 🎉')
     setPurchasing(null)
     return true
   }
@@ -1294,7 +1277,7 @@ export default function SettingsPage() {
                         {theme.name}
                       </span>
                       {theme.disabled && (
-                        <span className="text-[10px] text-amber-500">🔒 {theme.price ? `${theme.price} Origins` : 'Locked'}</span>
+                        <span className="text-[10px] text-amber-500">🔒</span>
                       )}
                     </button>
                   ))}
