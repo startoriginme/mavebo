@@ -7,7 +7,6 @@ import { UserPlus, UserCheck, Images, BadgeCheck, Snowflake, Monitor, Star, Sett
 import PhotoViewer from '@/components/photo-viewer'
 import Link from 'next/link'
 
-// Добавь после других импортов
 interface Pet {
   id: string
   name: string
@@ -22,6 +21,7 @@ interface UserPet {
   pet_id: string
   pet_name: string | null
   is_active: boolean
+  is_hidden: boolean
   acquired_at: string
   pets?: Pet
 }
@@ -149,6 +149,12 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   const [themePreference, setThemePreference] = useState<string>('default')
   const [patternPreference, setPatternPreference] = useState<string>('none')
 
+  // Pets state
+  const [userPets, setUserPets] = useState<UserPet[]>([])
+  const [allPets, setAllPets] = useState<Pet[]>([])
+  const [selectedPet, setSelectedPet] = useState<UserPet | null>(null)
+  const [activeTab, setActiveTab] = useState<'photos' | 'pets'>('photos')
+
   // Загружаем данные пользователя
   useEffect(() => {
     loadUserStats()
@@ -156,6 +162,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     loadUserSettings()
     loadDecorations()
     loadBadgeSettings()
+    loadPets()
   }, [profile.id])
 
   // Проверяем и добавляем ачивки за фото
@@ -194,6 +201,43 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
       setThemePreference(data.theme_preference || 'default')
       setPatternPreference(data.pattern_preference || 'none')
     }
+  }
+
+  async function loadPets() {
+    // Загружаем всех доступных питомцев
+    const { data: petsData } = await supabase
+      .from('pets')
+      .select('*')
+    
+    if (petsData) {
+      setAllPets(petsData)
+    }
+    
+    // Загружаем питомцев пользователя
+    const { data: userPetsData } = await supabase
+      .from('user_pets')
+      .select('*, pets(*)')
+      .eq('user_id', profile.id)
+    
+    if (userPetsData) {
+      setUserPets(userPetsData)
+    }
+  }
+
+  async function toggleHidePet(userPetId: string) {
+    const pet = userPets.find(p => p.id === userPetId)
+    if (!pet) return
+    
+    const newHidden = !pet.is_hidden
+    
+    await supabase
+      .from('user_pets')
+      .update({ is_hidden: newHidden })
+      .eq('id', userPetId)
+    
+    setUserPets(prev => prev.map(p => 
+      p.id === userPetId ? { ...p, is_hidden: newHidden } : p
+    ))
   }
 
   function getCurrentTheme() {
@@ -484,13 +528,11 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   const hiddenAchievementsList = allAchievements.filter(ach => hiddenAchievements.has(ach.id))
 
   const getAchievementConfig = (achievementName: string) => {
-    // Проверяем секретные ачивки
     const secretAch = SECRET_ACHIEVEMENTS.find(a => a.title === achievementName)
     if (secretAch) {
       return { icon: secretAch.icon, color: secretAch.color, label: secretAch.description }
     }
     
-    // Проверяем ачивки из магазина
     const shopAch = SHOP_ACHIEVEMENTS.find(a => a.title === achievementName)
     if (shopAch) {
       return { icon: shopAch.icon, color: shopAch.color, label: shopAch.description }
@@ -509,6 +551,10 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
 
   const currentTheme = getCurrentTheme()
   const currentPattern = getCurrentPattern()
+  
+  // Фильтруем питомцев для отображения (не скрытые)
+  const visiblePets = userPets.filter(pet => !pet.is_hidden)
+  const hasVisiblePets = visiblePets.length > 0
 
   return (
     <main className="px-4 pt-6 pb-4 max-w-xl mx-auto">
@@ -783,25 +829,151 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
         </div>
       )}
 
-      {/* Photos grid */}
-      {photos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-          <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-            <Images className="w-6 h-6 text-muted-foreground" />
-          </div>
-          <p className="text-sm text-muted-foreground">No public photos yet.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 gap-1.5">
-          {photos.map((photo) => (
-            <div
-              key={photo.id}
-              className="aspect-square rounded-xl overflow-hidden bg-muted cursor-pointer"
-              onClick={() => setViewer(photo)}
-            >
-              <img src={photo.url} alt={photo.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+      {/* Tabs */}
+      <div className="flex gap-2 mb-4 border-b border-border">
+        <button
+          onClick={() => setActiveTab('photos')}
+          className={`px-4 py-2 text-sm font-medium transition-all relative ${
+            activeTab === 'photos' 
+              ? 'text-primary' 
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Photos
+          {activeTab === 'photos' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+          )}
+        </button>
+        {hasVisiblePets && (
+          <button
+            onClick={() => setActiveTab('pets')}
+            className={`px-4 py-2 text-sm font-medium transition-all relative ${
+              activeTab === 'pets' 
+                ? 'text-primary' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            🐾 Pets
+            {activeTab === 'pets' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Photos Tab */}
+      {activeTab === 'photos' && (
+        <>
+          {photos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+                <Images className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">No public photos yet.</p>
             </div>
-          ))}
+          ) : (
+            <div className="grid grid-cols-3 gap-1.5">
+              {photos.map((photo) => (
+                <div
+                  key={photo.id}
+                  className="aspect-square rounded-xl overflow-hidden bg-muted cursor-pointer"
+                  onClick={() => setViewer(photo)}
+                >
+                  <img src={photo.url} alt={photo.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Pets Tab */}
+      {activeTab === 'pets' && hasVisiblePets && (
+        <div className="grid grid-cols-2 gap-3">
+          {visiblePets.map((userPet) => {
+            const pet = allPets.find(p => p.id === userPet.pet_id)
+            if (!pet) return null
+            return (
+              <div
+                key={userPet.id}
+                className="glass rounded-xl p-4 text-center cursor-pointer hover:scale-105 transition-all duration-300"
+                onClick={() => setSelectedPet(userPet)}
+              >
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-muted mx-auto mb-2">
+                  <img 
+                    src={pet.image_url} 
+                    alt={pet.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <p className="text-sm font-medium text-foreground">{userPet.pet_name || pet.name}</p>
+                <p className="text-xs text-muted-foreground capitalize">{pet.rarity}</p>
+                {isOwn && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleHidePet(userPet.id)
+                    }}
+                    className="mt-2 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    {userPet.is_hidden ? 'Show' : 'Hide'}
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Pet Detail Modal */}
+      {selectedPet && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setSelectedPet(null)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="relative p-6 text-center">
+              <button
+                onClick={() => setSelectedPet(null)}
+                className="absolute top-4 right-4 p-1 rounded-lg hover:bg-muted"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              {(() => {
+                const pet = allPets.find(p => p.id === selectedPet.pet_id)
+                if (!pet) return null
+                return (
+                  <>
+                    <div className="w-32 h-32 rounded-full overflow-hidden bg-muted mx-auto mb-4">
+                      <img 
+                        src={pet.image_url} 
+                        alt={pet.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground mb-1">
+                      {selectedPet.pet_name || pet.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground capitalize mb-2">{pet.rarity}</p>
+                    {!isOwn && (
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Price: <Coins className="w-4 h-4 inline text-amber-500" /> {pet.price}
+                      </p>
+                    )}
+                    {isOwn && (
+                      <button
+                        onClick={() => {
+                          toggleHidePet(selectedPet.id)
+                          setSelectedPet(null)
+                        }}
+                        className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
+                      >
+                        {selectedPet.is_hidden ? 'Show on profile' : 'Hide from profile'}
+                      </button>
+                    )}
+                  </>
+                )
+              })()}
+            </div>
+          </div>
         </div>
       )}
 
