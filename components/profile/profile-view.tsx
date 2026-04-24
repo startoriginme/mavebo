@@ -7,6 +7,25 @@ import { UserPlus, UserCheck, Images, BadgeCheck, Snowflake, Monitor, Star, Sett
 import PhotoViewer from '@/components/photo-viewer'
 import Link from 'next/link'
 
+// Добавь после других импортов
+interface Pet {
+  id: string
+  name: string
+  image_url: string
+  price: number
+  rarity: string
+}
+
+interface UserPet {
+  id: string
+  user_id: string
+  pet_id: string
+  pet_name: string | null
+  is_active: boolean
+  acquired_at: string
+  pets?: Pet
+}
+
 interface Props {
   profile: Profile
   photos: Photo[]
