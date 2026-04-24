@@ -21,8 +21,8 @@ export default async function FeedPage() {
       .in('user_id', userIds)
       .eq('privacy', 'public')
       .order('created_at', { ascending: false })
-      .limit(60)
-
+      // УБРАЛ .limit(60) — теперь загружает ВСЕ фото
+    
     const photoIds = (photos ?? []).map((p: any) => p.id)
     let likedIds = new Set<string>()
     if (photoIds.length > 0) {
@@ -46,7 +46,7 @@ export default async function FeedPage() {
     .select(`*, profile:profiles(id, name, username, avatar_url, badges), likes(count)`)
     .eq('privacy', 'public')
     .order('created_at', { ascending: false })
-    .limit(100)
+    // УБРАЛ .limit(100) — теперь загружает ВСЕ ФОТО (все 144+)
 
   const allPhotoIds = (allPhotosRaw ?? []).map((p: any) => p.id)
   let allLikedIds = new Set<string>()
