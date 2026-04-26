@@ -278,98 +278,111 @@ export default function SettingsPage() {
     }
   }
 
-  async function sendOrigins() {
-    if (!userId) return
-    if (!sendUsername.trim()) {
-      setSendError('Enter username')
-      return
-    }
-    const amount = parseFloat(sendAmount)
-    if (isNaN(amount) || amount <= 0) {
-      setSendError('Enter valid amount')
-      return
-    }
-    if (amount > originsBalance) {
-      setSendError(`Not enough Origins! You have ${originsBalance.toFixed(1)}`)
-      return
-    }
-    
-    setSending(true)
-    setSendError('')
-    setSendSuccess('')
-    
-    try {
-      // Находим получателя
-      const { data: receiver, error: findError } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .eq('username', sendUsername.toLowerCase())
-        .maybeSingle()
-      
-      if (findError || !receiver) {
-        setSendError('User not found')
-        setSending(false)
-        return
-      }
-      
-      if (receiver.id === userId) {
-        setSendError('You cannot send Origins to yourself')
-        setSending(false)
-        return
-      }
-      
-      // Обновляем отправителя
-      const newSent = sentOrigins + amount
-      const newBalance = originsBalance - amount
-      
-      const { error: senderError } = await supabase
-        .from('profiles')
-        .update({
-          sent_origins: newSent,
-          origins_balance: newBalance
-        })
-        .eq('id', userId)
-      
-      if (senderError) throw senderError
-      
-      // Обновляем получателя
-      const { data: receiverData } = await supabase
-        .from('profiles')
-        .select('origins_balance, received_origins')
-        .eq('id', receiver.id)
-        .single()
-      
-      const newReceived = (receiverData?.received_origins || 0) + amount
-      const newReceiverBalance = (receiverData?.origins_balance || 0) + amount
-      
-      const { error: receiverError } = await supabase
-        .from('profiles')
-        .update({
-          received_origins: newReceived,
-          origins_balance: newReceiverBalance
-        })
-        .eq('id', receiver.id)
-      
-      if (receiverError) throw receiverError
-      
-      setSentOrigins(newSent)
-      setOriginsBalance(newBalance)
-      setSendSuccess(`Sent ${amount} Origins to @${receiver.username}!`)
-      setSendUsername('')
-      setSendAmount('')
-      
-      // Обновляем максимальный баланс
-      const maxBalance = uploadCount + (swipeCount * 0.5) + receivedOrigins
-      setMaxOriginsBalance(maxBalance)
-      
-    } catch (error) {
-      console.error('Error sending Origins:', error)
-      setSendError('Failed to send Origins')
-    } finally {
-      setSending(false)
-    }
+ async function sendOrigins() {
+  if (!userId) return
+  if (!sendUsername.trim()) {
+    setSendError('Enter username')
+    return
   }
-
+  const amount = parseFloat(sendAmount)
+  if (isNaN(amount) || amount <= 0) {
+    setSendError('Enter valid amount')
+    return
+  }
+  if (amount > originsBalance) {
+    setSendError(`Not enough Origins! You have ${originsBalance.toFixed(1)}`)
+    return
+  }
+  
+  setSending(true)
+  setSendError('')
+  setSendSuccess('')
+  
+  try {
+    // Находим получателя
+    const { data: receiver, error: findError } = await supabase
+      .from('profiles')
+      .select('id, username, photo_count, swipe_count, received_origins, sent_origins, origins_balance')
+      .eq('username', sendUsername.toLowerCase())
+      .maybeSingle()
+    
+    if (findError || !receiver) {
+      setSendError('User not found')
+      setSending(false)
+      return
+    }
+    
+    if (receiver.id === userId) {
+      setSendError('You cannot send Origins to yourself')
+      setSending(false)
+      return
+    }
+    
+    // Получаем данные отправителя
+    const { data: senderData } = await supabase
+      .from('profiles')
+      .select('photo_count, swipe_count, received_origins, sent_origins, spent_origins')
+      .eq('id', userId)
+      .single()
+    
+    // Обновляем отправителя
+    const newSent = (senderData?.sent_origins || 0) + amount
+    const newSenderBalance = originsBalance - amount
+    
+    // Пересчитываем max баланс отправителя
+    const senderPhotoCount = uploadCount
+    const senderSwipeCount = swipeCount
+    const senderReceived = senderData?.received_origins || 0
+    const senderMaxBalance = senderPhotoCount + (senderSwipeCount * 0.5) + senderReceived
+    const newSenderMaxBalance = senderMaxBalance // max не меняется от отправки
+    
+    const { error: senderError } = await supabase
+      .from('profiles')
+      .update({
+        sent_origins: newSent,
+        origins_balance: newSenderBalance
+      })
+      .eq('id', userId)
+    
+    if (senderError) throw senderError
+    
+    // Обновляем получателя
+    const newReceived = (receiver.received_origins || 0) + amount
+    const newReceiverBalance = (receiver.origins_balance || 0) + amount
+    
+    // Пересчитываем max баланс получателя (он увеличивается от полученных Origins)
+    const receiverPhotoCount = receiver.photo_count || 0
+    const receiverSwipeCount = receiver.swipe_count || 0
+    const receiverSent = receiver.sent_origins || 0
+    const receiverSpent = 0 // нужно получить из БД или оставить 0
+    
+    const newReceiverMaxBalance = receiverPhotoCount + (receiverSwipeCount * 0.5) + newReceived
+    
+    const { error: receiverError } = await supabase
+      .from('profiles')
+      .update({
+        received_origins: newReceived,
+        origins_balance: newReceiverBalance
+      })
+      .eq('id', receiver.id)
+    
+    if (receiverError) throw receiverError
+    
+    // Обновляем локальные состояния отправителя
+    setSentOrigins(newSent)
+    setOriginsBalance(newSenderBalance)
+    
+    setSendSuccess(`Sent ${amount} Origins to @${receiver.username}!`)
+    setSendUsername('')
+    setSendAmount('')
+    
+  } catch (error) {
+    console.error('Error sending Origins:', error)
+    setSendError('Failed to send Origins')
+  } finally {
+    setSending(false)
+  }
+}
   async function saveBadgesSettings() {
     await supabase
       .from('profiles')
