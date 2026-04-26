@@ -302,7 +302,7 @@ export default function SettingsPage() {
     // Находим получателя
     const { data: receiver, error: findError } = await supabase
       .from('profiles')
-      .select('id, username, photo_count, swipe_count, received_origins, sent_origins, origins_balance')
+      .select('id, username, received_origins, origins_balance')
       .eq('username', sendUsername.toLowerCase())
       .maybeSingle()
     
@@ -318,23 +318,9 @@ export default function SettingsPage() {
       return
     }
     
-    // Получаем данные отправителя
-    const { data: senderData } = await supabase
-      .from('profiles')
-      .select('photo_count, swipe_count, received_origins, sent_origins, spent_origins')
-      .eq('id', userId)
-      .single()
-    
-    // Обновляем отправителя
-    const newSent = (senderData?.sent_origins || 0) + amount
+    // 1. Обновляем отправителя
+    const newSent = sentOrigins + amount
     const newSenderBalance = originsBalance - amount
-    
-    // Пересчитываем max баланс отправителя
-    const senderPhotoCount = uploadCount
-    const senderSwipeCount = swipeCount
-    const senderReceived = senderData?.received_origins || 0
-    const senderMaxBalance = senderPhotoCount + (senderSwipeCount * 0.5) + senderReceived
-    const newSenderMaxBalance = senderMaxBalance // max не меняется от отправки
     
     const { error: senderError } = await supabase
       .from('profiles')
@@ -346,17 +332,9 @@ export default function SettingsPage() {
     
     if (senderError) throw senderError
     
-    // Обновляем получателя
+    // 2. Обновляем получателя (увеличиваем received_origins И origins_balance)
     const newReceived = (receiver.received_origins || 0) + amount
     const newReceiverBalance = (receiver.origins_balance || 0) + amount
-    
-    // Пересчитываем max баланс получателя (он увеличивается от полученных Origins)
-    const receiverPhotoCount = receiver.photo_count || 0
-    const receiverSwipeCount = receiver.swipe_count || 0
-    const receiverSent = receiver.sent_origins || 0
-    const receiverSpent = 0 // нужно получить из БД или оставить 0
-    
-    const newReceiverMaxBalance = receiverPhotoCount + (receiverSwipeCount * 0.5) + newReceived
     
     const { error: receiverError } = await supabase
       .from('profiles')
@@ -368,9 +346,12 @@ export default function SettingsPage() {
     
     if (receiverError) throw receiverError
     
-    // Обновляем локальные состояния отправителя
+    // 3. Обновляем локальные состояния
     setSentOrigins(newSent)
     setOriginsBalance(newSenderBalance)
+    
+    // 4. Обновляем maxOriginsBalance (он не меняется при отправке)
+    // maxOriginsBalance остается тот же
     
     setSendSuccess(`Sent ${amount} Origins to @${receiver.username}!`)
     setSendUsername('')
