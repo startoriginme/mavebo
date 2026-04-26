@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X, Star, Computer, Snowflake, BadgeCheck, Palette, Trophy, ShoppingCart, Zap, GripVertical, Eye, EyeOff, Crown, Diamond, Heart, Award, Sparkles, Flame, TrendingUp } from 'lucide-react'
+import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X, Star, Computer, Snowflake, BadgeCheck, Palette, Trophy, ShoppingCart, Zap, GripVertical, Eye, EyeOff, Crown, Diamond, Heart, Award, Sparkles, Flame, TrendingUp, Send } from 'lucide-react'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -56,8 +56,17 @@ export default function SettingsPage() {
   const [originsBalance, setOriginsBalance] = useState(0)
   const [maxOriginsBalance, setMaxOriginsBalance] = useState(0)
   const [spentOrigins, setSpentOrigins] = useState(0)
+  const [sentOrigins, setSentOrigins] = useState(0)
+  const [receivedOrigins, setReceivedOrigins] = useState(0)
   const [uploadCount, setUploadCount] = useState(0)
   const [swipeCount, setSwipeCount] = useState(0)
+  
+  // Send Origins state
+  const [sendUsername, setSendUsername] = useState('')
+  const [sendAmount, setSendAmount] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
+  const [sendSuccess, setSendSuccess] = useState('')
   
   // Purchased items
   const [purchasedBadges, setPurchasedBadges] = useState<string[]>([])
@@ -163,6 +172,8 @@ export default function SettingsPage() {
         setSelectedPattern(data.pattern_preference || 'none')
         setShopUnlocked(data.shop_unlocked || false)
         setSpentOrigins(data.spent_origins || 0)
+        setSentOrigins(data.sent_origins || 0)
+        setReceivedOrigins(data.received_origins || 0)
         setHiddenBadges(data.hidden_badges || [])
         setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award'])
       }
@@ -231,7 +242,7 @@ export default function SettingsPage() {
   async function loadOriginsBalance(userId: string) {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('swipe_count, origins_balance, spent_origins')
+      .select('swipe_count, origins_balance, spent_origins, sent_origins, received_origins')
       .eq('id', userId)
       .single()
     
@@ -246,19 +257,117 @@ export default function SettingsPage() {
     const photoCountValue = photoCount || 0
     setUploadCount(photoCountValue)
     
-    const maxBalance = photoCountValue + (swipeCountValue * 0.5)
+    const sent = profileData?.sent_origins || 0
+    const received = profileData?.received_origins || 0
+    setSentOrigins(sent)
+    setReceivedOrigins(received)
+    
+    // Новая формула: фото × 1 + свайпы × 0.5 + полученные - отправленные - потраченные
+    const maxBalance = photoCountValue + (swipeCountValue * 0.5) + received
     setMaxOriginsBalance(maxBalance)
     
-    const spent = profileData?.spent_origins || 0
-    setSpentOrigins(spent)
-    
-    const currentBalance = maxBalance - spent
+    const currentBalance = maxBalance - sent - (profileData?.spent_origins || 0)
     setOriginsBalance(currentBalance)
     
-    await supabase
-      .from('profiles')
-      .update({ origins_balance: currentBalance })
-      .eq('id', userId)
+    // Обновляем баланс в БД если расходится
+    if (profileData?.origins_balance !== currentBalance) {
+      await supabase
+        .from('profiles')
+        .update({ origins_balance: currentBalance })
+        .eq('id', userId)
+    }
+  }
+
+  async function sendOrigins() {
+    if (!userId) return
+    if (!sendUsername.trim()) {
+      setSendError('Enter username')
+      return
+    }
+    const amount = parseFloat(sendAmount)
+    if (isNaN(amount) || amount <= 0) {
+      setSendError('Enter valid amount')
+      return
+    }
+    if (amount > originsBalance) {
+      setSendError(`Not enough Origins! You have ${originsBalance.toFixed(1)}`)
+      return
+    }
+    
+    setSending(true)
+    setSendError('')
+    setSendSuccess('')
+    
+    try {
+      // Находим получателя
+      const { data: receiver, error: findError } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .eq('username', sendUsername.toLowerCase())
+        .maybeSingle()
+      
+      if (findError || !receiver) {
+        setSendError('User not found')
+        setSending(false)
+        return
+      }
+      
+      if (receiver.id === userId) {
+        setSendError('You cannot send Origins to yourself')
+        setSending(false)
+        return
+      }
+      
+      // Обновляем отправителя
+      const newSent = sentOrigins + amount
+      const newBalance = originsBalance - amount
+      
+      const { error: senderError } = await supabase
+        .from('profiles')
+        .update({
+          sent_origins: newSent,
+          origins_balance: newBalance
+        })
+        .eq('id', userId)
+      
+      if (senderError) throw senderError
+      
+      // Обновляем получателя
+      const { data: receiverData } = await supabase
+        .from('profiles')
+        .select('origins_balance, received_origins')
+        .eq('id', receiver.id)
+        .single()
+      
+      const newReceived = (receiverData?.received_origins || 0) + amount
+      const newReceiverBalance = (receiverData?.origins_balance || 0) + amount
+      
+      const { error: receiverError } = await supabase
+        .from('profiles')
+        .update({
+          received_origins: newReceived,
+          origins_balance: newReceiverBalance
+        })
+        .eq('id', receiver.id)
+      
+      if (receiverError) throw receiverError
+      
+      setSentOrigins(newSent)
+      setOriginsBalance(newBalance)
+      setSendSuccess(`Sent ${amount} Origins to @${receiver.username}!`)
+      setSendUsername('')
+      setSendAmount('')
+      
+      // Обновляем максимальный баланс
+      const maxBalance = uploadCount + (swipeCount * 0.5) + receivedOrigins
+      setMaxOriginsBalance(maxBalance)
+      
+    } catch (error) {
+      console.error('Error sending Origins:', error)
+      setSendError('Failed to send Origins')
+    } finally {
+      setSending(false)
+    }
   }
 
   async function saveBadgesSettings() {
@@ -391,7 +500,7 @@ export default function SettingsPage() {
     }
 
     const newSpent = spentOrigins + price
-    const newBalance = maxOriginsBalance - newSpent
+    const newBalance = originsBalance - price
     
     const { error: balanceError } = await supabase
       .from('profiles')
@@ -1121,15 +1230,49 @@ export default function SettingsPage() {
               <div className="bg-muted/30 rounded-xl p-4 mb-6">
                 <p className="text-sm text-foreground mb-2">📸 How Origins work:</p>
                 <p className="text-xs text-muted-foreground">
-                  You earn Origins from activity, then spend them in the Shop!
+                  Formula: Photos + Swipes×0.5 + Received - Sent - Spent
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  • {uploadCount} photos × 1 = {uploadCount} Origins earned<br />
-                  • {swipeCount} swipes × 0.5 = {(swipeCount * 0.5).toFixed(1)} Origins earned
+                  • {uploadCount} photos × 1 = {uploadCount}<br />
+                  • {swipeCount} swipes × 0.5 = {(swipeCount * 0.5).toFixed(1)}<br />
+                  • Received: {receivedOrigins.toFixed(1)}<br />
+                  • Sent: {sentOrigins.toFixed(1)}<br />
+                  • Spent: {spentOrigins.toFixed(1)}
                 </p>
                 <p className="text-xs text-amber-500 mt-2">
-                  Spent: {spentOrigins.toFixed(1)} / {maxOriginsBalance.toFixed(1)} Origins
+                  Balance: {maxOriginsBalance.toFixed(1)} - {sentOrigins.toFixed(1)} - {spentOrigins.toFixed(1)} = {originsBalance.toFixed(1)}
                 </p>
+              </div>
+
+              {/* Send Origins Form */}
+              <div className="border-t border-border pt-4 mb-4">
+                <p className="text-sm font-medium text-foreground mb-3">Send Origins to a friend</p>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={sendUsername}
+                    onChange={(e) => setSendUsername(e.target.value)}
+                    placeholder="Username (without @)"
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <input
+                    type="number"
+                    value={sendAmount}
+                    onChange={(e) => setSendAmount(e.target.value)}
+                    placeholder="Amount"
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  {sendError && <p className="text-sm text-destructive">{sendError}</p>}
+                  {sendSuccess && <p className="text-sm text-green-500">{sendSuccess}</p>}
+                  <button
+                    onClick={sendOrigins}
+                    disabled={sending}
+                    className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Send className="w-4 h-4" />
+                    {sending ? 'Sending...' : 'Send Origins'}
+                  </button>
+                </div>
               </div>
               
               <button
