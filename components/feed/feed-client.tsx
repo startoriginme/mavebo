@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, memo } from 'react'
 import type { Photo } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { Heart, Images, Globe, Users, X, Heart as HeartIcon, Flame, Trophy, Sparkles, Camera, Star, Search, ExternalLink } from 'lucide-react'
@@ -34,6 +34,90 @@ function formatNumber(num: number): string {
   return num.toString()
 }
 
+// Мемоизированный компонент PhotoCard для предотвращения лишних ререндеров
+const PhotoCard = memo(function PhotoCard({
+  photo,
+  onLike,
+  onOpen,
+  onOpenInNewTab,
+}: {
+  photo: Photo
+  onLike: () => void
+  onOpen: () => void
+  onOpenInNewTab: () => void
+}) {
+  const formatLikes = useCallback((num: number) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
+    return num.toString()
+  }, [])
+
+  return (
+    <div className="glass rounded-2xl overflow-hidden">
+      <Link href={`/profile/${photo.profile?.username}`} className="flex items-center gap-2.5 px-4 py-3">
+        <div className="w-8 h-8 rounded-full overflow-hidden bg-muted flex-shrink-0">
+          {photo.profile?.avatar_url ? (
+            <img 
+              src={photo.profile.avatar_url} 
+              alt={photo.profile.name} 
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+              {photo.profile?.name?.[0] ?? '?'}
+            </div>
+          )}
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground leading-tight">{photo.profile?.name}</p>
+          <p className="text-xs text-muted-foreground">@{photo.profile?.username}</p>
+        </div>
+      </Link>
+
+      <div
+        className="w-full bg-muted cursor-pointer relative"
+        style={{ paddingBottom: '75%' }}
+        onClick={onOpen}
+      >
+        <img
+          src={photo.url}
+          alt={photo.name}
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+        />
+      </div>
+
+      <div className="px-4 py-3 flex flex-col gap-1.5">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onLike}
+            className="flex items-center gap-1.5 transition-colors group"
+            aria-label={photo.is_liked ? 'Unlike' : 'Like'}
+          >
+            <Heart
+              className={`w-5 h-5 transition-all ${photo.is_liked ? 'fill-red-500 text-red-500' : 'text-muted-foreground group-hover:text-red-400'}`}
+            />
+            <span className={`text-sm ${photo.is_liked ? 'text-red-500' : 'text-muted-foreground'}`}>
+              {formatLikes(photo.likes_count ?? 0)}
+            </span>
+          </button>
+          <button
+            onClick={onOpenInNewTab}
+            className="flex items-center gap-1.5 transition-colors group text-muted-foreground hover:text-foreground"
+            aria-label="Open in new tab"
+            title="Open photo in full screen"
+          >
+            <ExternalLink className="w-4 h-4" />
+            <span className="text-xs">Fullscreen</span>
+          </button>
+        </div>
+        <p className="text-sm font-semibold text-foreground">{photo.name}</p>
+      </div>
+    </div>
+  )
+})
+
 export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, userId }: Props) {
   const supabase = createClient()
   const [followingPhotos, setFollowingPhotos] = useState<Photo[]>(initialFollowingPhotos)
@@ -43,8 +127,10 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [page, setPage] = useState(1)
+  const [isLoadingInitial, setIsLoadingInitial] = useState(false)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const lastPhotoRef = useRef<HTMLDivElement | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Tinder Mode states
   const [tinderMode, setTinderMode] = useState(false)
@@ -56,6 +142,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
+  const swipeAchievementRef = useRef<Set<string>>(new Set())
 
   const photos = showAll ? allPhotos : followingPhotos
   const isFollowingEmpty = followingPhotos.length === 0
@@ -74,11 +161,12 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
     }
   }, [tinderMode])
 
-  // Загружаем счетчик свайпов
+  // Загружаем счетчик свайпов (один раз)
   useEffect(() => {
     if (userId) {
       loadUserSwipeCount()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
   async function loadUserSwipeCount() {
@@ -94,33 +182,41 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
   }
 
   async function updateSwipeCount(newCount: number) {
-    await supabase
-      .from('profiles')
-      .update({ swipe_count: newCount })
-      .eq('id', userId)
-    
+    // Оптимизация: проверяем, не получали ли уже эту ачивку
     const newAchievement = SWIPE_ACHIEVEMENTS.find(a => a.count === newCount)
-    if (newAchievement) {
+    if (newAchievement && !swipeAchievementRef.current.has(newAchievement.title)) {
+      swipeAchievementRef.current.add(newAchievement.title)
       setShowAchievement(newAchievement)
       setTimeout(() => setShowAchievement(null), 3000)
       
-      try {
-        await supabase
-          .from('achievements')
-          .upsert({
-            user_id: userId,
-            achievement_type: 'swipe',
-            achievement_name: newAchievement.title,
-            achieved_at: new Date().toISOString()
-          })
-      } catch (error) {
-        console.error('Error saving achievement:', error)
-      }
+      // Асинхронное сохранение без ожидания
+      supabase
+        .from('profiles')
+        .update({ swipe_count: newCount })
+        .eq('id', userId)
+        .then(() => {
+          supabase
+            .from('achievements')
+            .upsert({
+              user_id: userId,
+              achievement_type: 'swipe',
+              achievement_name: newAchievement.title,
+              achieved_at: new Date().toISOString()
+            })
+            .catch(console.error)
+        })
+        .catch(console.error)
+    } else {
+      // Просто обновляем счетчик
+      await supabase
+        .from('profiles')
+        .update({ swipe_count: newCount })
+        .eq('id', userId)
     }
   }
 
   // Вход в Tinder Mode
-  const enterTinderMode = () => {
+  const enterTinderMode = useCallback(() => {
     const allPublicPhotos = [...allPhotos, ...followingPhotos].filter(p => p.privacy === 'public')
     if (allPublicPhotos.length > 0) {
       setTinderPhotos(allPublicPhotos)
@@ -129,37 +225,33 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
     } else {
       alert("No photos available. Upload some photos first!")
     }
-  }
+  }, [allPhotos, followingPhotos])
 
   // Выход из Tinder Mode
-  const exitTinderMode = () => {
+  const exitTinderMode = useCallback(() => {
     setTinderMode(false)
     setDragOffset({ x: 0, y: 0 })
-  }
+  }, [])
 
   // Обработка свайпа
-  const handleSwipe = async (direction: 'left' | 'right') => {
-    if (currentPhotoIndex >= tinderPhotos.length - 1) {
-      setCurrentPhotoIndex(0)
-    } else {
-      setCurrentPhotoIndex(prev => prev + 1)
-    }
+  const handleSwipe = useCallback(async (direction: 'left' | 'right') => {
+    setCurrentPhotoIndex(prev => (prev >= tinderPhotos.length - 1 ? 0 : prev + 1))
     
     const newCount = swipeCount + 1
     setSwipeCount(newCount)
     await updateSwipeCount(newCount)
     setDragOffset({ x: 0, y: 0 })
-  }
+  }, [tinderPhotos.length, swipeCount])
 
   // Обработка drag
-  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     setIsDragging(true)
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
     setDragStart({ x: clientX, y: clientY })
-  }
+  }, [])
 
-  const handleDragMove = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleDragMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!isDragging) return
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
@@ -167,9 +259,9 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
       x: clientX - dragStart.x,
       y: clientY - dragStart.y,
     })
-  }
+  }, [isDragging, dragStart])
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     if (!isDragging) return
     setIsDragging(false)
     
@@ -177,11 +269,11 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
       handleSwipe(dragOffset.x > 0 ? 'right' : 'left')
     }
     setDragOffset({ x: 0, y: 0 })
-  }
+  }, [isDragging, dragOffset, handleSwipe])
 
-  // Load more photos
+  // Оптимизированная загрузка фото
   const loadMorePhotos = useCallback(async () => {
-    if (loadingMore || !hasMore) return
+    if (loadingMore || !hasMore || isLoadingInitial) return
     
     setLoadingMore(true)
     
@@ -198,7 +290,6 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
         .eq('privacy', 'public')
         .order('created_at', { ascending: false })
       
-      // Если не показываем все фото, фильтруем по подпискам
       if (!showAll && followingPhotos.length > 0) {
         const followedUserIds = [...new Set(followingPhotos.map(p => p.profile?.id).filter(Boolean))]
         if (followedUserIds.length > 0) {
@@ -212,26 +303,19 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
       const { data, error } = await query.range(offset, offset + limit - 1)
       
       if (!error && data && data.length > 0) {
-        // Получаем ID новых фото
         const newPhotoIds = data.map(p => p.id)
         
-        // Получаем лайки пользователя
-        const { data: likes } = await supabase
-          .from('likes')
-          .select('photo_id')
-          .eq('user_id', userId)
+        // Параллельные запросы для оптимизации
+        const [likesResult, likesCountsResult] = await Promise.all([
+          supabase.from('likes').select('photo_id').eq('user_id', userId),
+          supabase.from('likes').select('photo_id').in('photo_id', newPhotoIds)
+        ])
         
-        const likedPhotoIds = new Set(likes?.map(l => l.photo_id) || [])
-        
-        // Получаем количество лайков для каждого фото
-        const { data: likesCounts } = await supabase
-          .from('likes')
-          .select('photo_id')
-          .in('photo_id', newPhotoIds)
+        const likedPhotoIds = new Set(likesResult.data?.map(l => l.photo_id) || [])
         
         const likesCountMap = new Map()
-        if (likesCounts) {
-          likesCounts.forEach(like => {
+        if (likesCountsResult.data) {
+          likesCountsResult.data.forEach(like => {
             likesCountMap.set(like.photo_id, (likesCountMap.get(like.photo_id) || 0) + 1)
           })
         }
@@ -242,14 +326,15 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
           likes_count: likesCountMap.get(photo.id) || 0
         }))
         
-        // Фильтруем дубликаты
         const existingIds = new Set(photos.map(p => p.id))
         const uniqueNewPhotos = newPhotos.filter(photo => !existingIds.has(photo.id))
         
-        if (showAll) {
-          setAllPhotos(prev => [...prev, ...uniqueNewPhotos])
-        } else {
-          setFollowingPhotos(prev => [...prev, ...uniqueNewPhotos])
+        if (uniqueNewPhotos.length > 0) {
+          if (showAll) {
+            setAllPhotos(prev => [...prev, ...uniqueNewPhotos])
+          } else {
+            setFollowingPhotos(prev => [...prev, ...uniqueNewPhotos])
+          }
         }
         
         setPage(prev => prev + 1)
@@ -262,11 +347,15 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
     } finally {
       setLoadingMore(false)
     }
-  }, [loadingMore, hasMore, page, showAll, followingPhotos, photos, supabase, userId])
+  }, [loadingMore, hasMore, page, showAll, followingPhotos, photos, supabase, userId, isLoadingInitial])
 
   // Intersection observer
   useEffect(() => {
-    if (!hasPhotos) return
+    if (!hasPhotos || loadingMore || !hasMore) return
+    
+    if (observerRef.current) {
+      observerRef.current.disconnect()
+    }
     
     observerRef.current = new IntersectionObserver(
       (entries) => {
@@ -274,7 +363,7 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
           loadMorePhotos()
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1, rootMargin: '100px' }
     )
     
     if (lastPhotoRef.current) {
@@ -290,15 +379,20 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
 
   async function toggleLike(photo: Photo) {
     const isLiked = photo.is_liked
-    const updater = (prev: Photo[]) =>
+    const newLikesCount = Math.max(0, (photo.likes_count ?? 0) + (isLiked ? -1 : 1))
+    
+    // Оптимистичное обновление UI
+    const updateState = (prev: Photo[]) =>
       prev.map((p) =>
         p.id === photo.id
-          ? { ...p, is_liked: !isLiked, likes_count: Math.max(0, (p.likes_count ?? 0) + (isLiked ? -1 : 1)) }
-          : p,
+          ? { ...p, is_liked: !isLiked, likes_count: newLikesCount }
+          : p
       )
-    setFollowingPhotos(updater)
-    setAllPhotos(updater)
+    
+    setFollowingPhotos(updateState)
+    setAllPhotos(updateState)
 
+    // Фоновый запрос к БД
     if (isLiked) {
       await supabase.from('likes').delete().eq('photo_id', photo.id).eq('user_id', userId)
     } else {
@@ -306,15 +400,15 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
     }
   }
 
-  const toggleFeed = () => {
-    setShowAll(!showAll)
+  const toggleFeed = useCallback(() => {
+    setShowAll(prev => !prev)
     setPage(1)
     setHasMore(true)
-  }
+  }, [])
 
-  const openPhotoInNewTab = (url: string) => {
+  const openPhotoInNewTab = useCallback((url: string) => {
     window.open(url, '_blank')
-  }
+  }, [])
 
   // Tinder Mode UI
   if (tinderMode) {
@@ -596,82 +690,5 @@ export default function FeedClient({ initialFollowingPhotos, initialAllPhotos, u
 
       {viewer && <PhotoViewer photo={viewer} onClose={() => setViewer(null)} />}
     </main>
-  )
-}
-
-function PhotoCard({
-  photo,
-  onLike,
-  onOpen,
-  onOpenInNewTab,
-}: {
-  photo: Photo
-  onLike: () => void
-  onOpen: () => void
-  onOpenInNewTab: () => void
-}) {
-  const formatLikes = (num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
-    return num.toString()
-  }
-
-  return (
-    <div className="glass rounded-2xl overflow-hidden">
-      <Link href={`/profile/${photo.profile?.username}`} className="flex items-center gap-2.5 px-4 py-3">
-        <div className="w-8 h-8 rounded-full overflow-hidden bg-muted flex-shrink-0">
-          {photo.profile?.avatar_url ? (
-            <img src={photo.profile.avatar_url} alt={photo.profile.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-              {photo.profile?.name?.[0] ?? '?'}
-            </div>
-          )}
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-foreground leading-tight">{photo.profile?.name}</p>
-          <p className="text-xs text-muted-foreground">@{photo.profile?.username}</p>
-        </div>
-      </Link>
-
-      <div
-        className="w-full bg-muted cursor-pointer"
-        style={{ paddingBottom: '75%', position: 'relative' }}
-        onClick={onOpen}
-      >
-        <img
-          src={photo.url}
-          alt={photo.name}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      </div>
-
-      <div className="px-4 py-3 flex flex-col gap-1.5">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onLike}
-            className="flex items-center gap-1.5 transition-colors group"
-            aria-label={photo.is_liked ? 'Unlike' : 'Like'}
-          >
-            <Heart
-              className={`w-5 h-5 transition-all ${photo.is_liked ? 'fill-red-500 text-red-500' : 'text-muted-foreground group-hover:text-red-400'}`}
-            />
-            <span className={`text-sm ${photo.is_liked ? 'text-red-500' : 'text-muted-foreground'}`}>
-              {formatLikes(photo.likes_count ?? 0)}
-            </span>
-          </button>
-          <button
-            onClick={onOpenInNewTab}
-            className="flex items-center gap-1.5 transition-colors group text-muted-foreground hover:text-foreground"
-            aria-label="Open in new tab"
-            title="Open photo in full screen"
-          >
-            <ExternalLink className="w-4 h-4" />
-            <span className="text-xs">Fullscreen</span>
-          </button>
-        </div>
-        <p className="text-sm font-semibold text-foreground">{photo.name}</p>
-      </div>
-    </div>
   )
 }
