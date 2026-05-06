@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Photo, BadgeType } from '@/lib/types'
-import { UserPlus, UserCheck, Images, BadgeCheck, Snowflake, Monitor, Star, Settings, Trophy, Flame, Camera, Sparkles, X, Search, Upload, Eye, EyeOff, Edit2, Minus, Plus, Coins, Glasses, Crown, Diamond, Heart, Award, ShoppingCart, ShoppingBag, Zap } from 'lucide-react'
+import { UserPlus, UserCheck, Images, BadgeCheck, Snowflake, Monitor, Star, Settings, Trophy, Flame, Camera, Sparkles, X, Search, Upload, Eye, EyeOff, Edit2, Minus, Plus, Coins, Glasses, Crown, Diamond, Heart, Award, ShoppingCart, ShoppingBag, Zap, Rocket, Leaf, Moon, Sun, Music, Book, Coffee, Gamepad, Gift, Smile } from 'lucide-react'
 import PhotoViewer from '@/components/photo-viewer'
 import Link from 'next/link'
 
@@ -33,6 +33,7 @@ interface Props {
   currentUserId: string | null
 }
 
+// РАСШИРЕННАЯ КОНФИГУРАЦИЯ ЗНАЧКОВ
 const BADGE_CONFIG: Record<BadgeType, { icon: React.ElementType; color: string; label: string }> = {
   verified: { icon: BadgeCheck, color: 'text-blue-500', label: 'Verified' },
   snowflake: { icon: Snowflake, color: 'text-cyan-400', label: 'Snowflake' },
@@ -42,6 +43,17 @@ const BADGE_CONFIG: Record<BadgeType, { icon: React.ElementType; color: string; 
   diamond: { icon: Diamond, color: 'text-sky-400', label: 'Diamond' },
   heart: { icon: Heart, color: 'text-pink-500', label: 'Heart' },
   award: { icon: Award, color: 'text-emerald-500', label: 'Award' },
+  rocket: { icon: Rocket, color: 'text-red-500', label: 'Rocket' },
+  leaf: { icon: Leaf, color: 'text-green-600', label: 'Leaf' },
+  moon: { icon: Moon, color: 'text-indigo-400', label: 'Moon' },
+  sun: { icon: Sun, color: 'text-orange-500', label: 'Sun' },
+  music: { icon: Music, color: 'text-pink-600', label: 'Music' },
+  book: { icon: Book, color: 'text-amber-700', label: 'Book' },
+  coffee: { icon: Coffee, color: 'text-amber-700', label: 'Coffee' },
+  gamepad: { icon: Gamepad, color: 'text-purple-600', label: 'Gamepad' },
+  gift: { icon: Gift, color: 'text-red-500', label: 'Gift' },
+  smile: { icon: Smile, color: 'text-yellow-500', label: 'Smile' },
+  sparkles: { icon: Sparkles, color: 'text-purple-400', label: 'Sparkles' },
 }
 
 // Ачивки за свайпы
@@ -79,11 +91,16 @@ const UPLOAD_ACHIEVEMENTS = [
   { count: 100, title: "Photo God", icon: Trophy, color: "text-cyan-500", description: "Uploaded 100 photos" },
 ]
 
-// Ачивки из магазина
+// Ачивки из магазина (РАСШИРЕННЫЕ)
 const SHOP_ACHIEVEMENTS = [
   { title: "Shopkeepers' Favorite", icon: ShoppingCart, color: "text-purple-500", description: "Spent 500 Origins in shop" },
   { title: "Buyer", icon: ShoppingBag, color: "text-green-500", description: "Made first purchase" },
   { title: "Shopping", icon: Zap, color: "text-yellow-500", description: "Bought 3 items" },
+  { title: "Collector", icon: Star, color: "text-amber-500", description: "Collected 5 badges" },
+  { title: "Big Spender", icon: Trophy, color: "text-red-500", description: "Spent 2000 Origins in shop" },
+  { title: "Legendary", icon: Crown, color: "text-yellow-500", description: "Bought a legendary item" },
+  { title: "Completionist", icon: Award, color: "text-emerald-500", description: "Collected all badges" },
+  { title: "Daily Shopper", icon: ShoppingBag, color: "text-blue-500", description: "Bought something 3 days in a row" },
 ]
 
 // Секретные ачивки
@@ -99,7 +116,7 @@ type Achievement = {
   achieved_at: string
 }
 
-// Theme configurations for the profile container only
+// Theme configurations
 const THEMES: Record<string, { bg: string; text: string }> = {
   default: { bg: 'bg-white dark:bg-gray-900', text: 'text-black dark:text-white' },
   black: { bg: 'bg-black', text: 'text-white' },
@@ -140,10 +157,11 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   const [originsBalance, setOriginsBalance] = useState(0)
   const [maxOriginsBalance, setMaxOriginsBalance] = useState(0)
   const [spentOrigins, setSpentOrigins] = useState(0)
+  const [receivedOrigins, setReceivedOrigins] = useState(0)
   
   // Badge settings
   const [hiddenBadges, setHiddenBadges] = useState<string[]>([])
-  const [badgesOrder, setBadgesOrder] = useState<string[]>(['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award'])
+  const [badgesOrder, setBadgesOrder] = useState<string[]>(['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award', 'rocket', 'leaf', 'moon', 'sun', 'music', 'book', 'coffee', 'gamepad', 'gift', 'smile', 'sparkles'])
   
   // Decoration state for profile container only
   const [themePreference, setThemePreference] = useState<string>('default')
@@ -175,7 +193,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   // Пересчитываем баланс Origins при изменении свайпов и фоток
   useEffect(() => {
     calculateOriginsBalance()
-  }, [swipeCount, uploadCount])
+  }, [swipeCount, uploadCount, receivedOrigins])
 
   async function loadBadgeSettings() {
     const { data } = await supabase
@@ -186,7 +204,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     
     if (data) {
       setHiddenBadges(data.hidden_badges || [])
-      setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award'])
+      setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award', 'rocket', 'leaf', 'moon', 'sun', 'music', 'book', 'coffee', 'gamepad', 'gift', 'smile', 'sparkles'])
     }
   }
 
@@ -204,7 +222,6 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   }
 
   async function loadPets() {
-    // Загружаем всех доступных питомцев
     const { data: petsData } = await supabase
       .from('pets')
       .select('*')
@@ -213,7 +230,6 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
       setAllPets(petsData)
     }
     
-    // Загружаем питомцев пользователя
     const { data: userPetsData } = await supabase
       .from('user_pets')
       .select('*, pets(*)')
@@ -249,17 +265,22 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   }
 
   async function calculateOriginsBalance() {
-    const maxBalance = uploadCount + (swipeCount * 0.5)
-    setMaxOriginsBalance(maxBalance)
-    
+    // Получаем spent_origins и received_origins из БД
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('spent_origins, origins_balance')
+      .select('spent_origins, received_origins')
       .eq('id', profile.id)
       .single()
     
     const spent = profileData?.spent_origins || 0
+    const received = profileData?.received_origins || 0
+    
     setSpentOrigins(spent)
+    setReceivedOrigins(received)
+    
+    // НОВАЯ ФОРМУЛА: фото + свайпы×0.5 + полученные - потраченные
+    const maxBalance = uploadCount + (swipeCount * 0.5) + received
+    setMaxOriginsBalance(maxBalance)
     
     const currentBalance = maxBalance - spent
     setOriginsBalance(currentBalance)
@@ -267,7 +288,10 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     if (isOwn) {
       await supabase
         .from('profiles')
-        .update({ origins_balance: currentBalance })
+        .update({ 
+          origins_balance: currentBalance,
+          max_origins_balance: maxBalance
+        })
         .eq('id', profile.id)
     }
   }
@@ -275,7 +299,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   async function loadUserStats() {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('swipe_count, origins_balance, purchased_badges, spent_origins, purchased_achievements')
+      .select('swipe_count, origins_balance, purchased_badges, spent_origins, purchased_achievements, received_origins')
       .eq('id', profile.id)
       .single()
     
@@ -289,6 +313,9 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
       }
       if (profileData.spent_origins !== undefined) {
         setSpentOrigins(profileData.spent_origins)
+      }
+      if (profileData.received_origins !== undefined) {
+        setReceivedOrigins(profileData.received_origins)
       }
     }
     
@@ -462,7 +489,6 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   // Собираем все значки с учетом скрытых и порядка
   let allAvailableBadges: BadgeType[] = []
   
-  // Добавляем купленные значки из магазина
   const purchasedBadges = profile.purchased_badges || []
   for (const badge of purchasedBadges) {
     if (!allAvailableBadges.includes(badge as BadgeType)) {
@@ -470,7 +496,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     }
   }
   
-  // Добавляем специальные значки для конкретных пользователей
+  // Специальные значки
   const isWinterWastaken = profile.username === 'winterwastaken' || profile.id === 'c2c721aa-bc04-4c6e-a86b-f3f105bd738f'
   const isViscaelbarca = profile.username === 'viscaelbarca' || profile.id === 'ce0f7b34-b8d7-41b7-8437-dc3fc95399bd'
   const isZaharques = profile.username === 'zaharques' || profile.id === '9e6a9c61-1205-4149-9328-7ea038b10726'
@@ -496,21 +522,24 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     allAvailableBadges.push('star')
   }
   
-  // Фильтруем скрытые значки и сортируем по порядку
   const visibleBadges = badgesOrder.filter(badgeId => 
     allAvailableBadges.includes(badgeId as BadgeType) && !hiddenBadges.includes(badgeId)
   )
   
-  // Собираем все ачивки (обычные + из магазина)
+  // Ачивки
   const purchasedAchievements = profile.purchased_achievements || []
   const allAchievements = [...achievements]
   
-  // Добавляем покупные ачивки из магазина в список
   for (const achId of purchasedAchievements) {
     let achName = ''
     if (achId === 'shopkeeper') achName = "Shopkeepers' Favorite"
     if (achId === 'buyer') achName = 'Buyer'
     if (achId === 'shopping') achName = 'Shopping'
+    if (achId === 'collector') achName = 'Collector'
+    if (achId === 'big_spender') achName = 'Big Spender'
+    if (achId === 'legendary') achName = 'Legendary'
+    if (achId === 'completionist') achName = 'Completionist'
+    if (achId === 'daily_shopper') achName = 'Daily Shopper'
     
     if (achName && !allAchievements.some(a => a.achievement_name === achName)) {
       allAchievements.push({
@@ -523,7 +552,6 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
     }
   }
   
-  // Фильтруем ачивки для отображения
   const visibleAchievements = allAchievements.filter(ach => !hiddenAchievements.has(ach.id))
   const hiddenAchievementsList = allAchievements.filter(ach => hiddenAchievements.has(ach.id))
 
@@ -552,16 +580,14 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
   const currentTheme = getCurrentTheme()
   const currentPattern = getCurrentPattern()
   
-  // Фильтруем питомцев для отображения (не скрытые)
   const visiblePets = userPets.filter(pet => !pet.is_hidden)
   const hasVisiblePets = visiblePets.length > 0
 
   return (
     <main className="px-4 pt-6 pb-4 max-w-xl mx-auto">
-      {/* Profile header - ONLY THIS CONTAINER changes background and pattern */}
+      {/* Profile header */}
       <div className={`rounded-2xl p-5 mb-5 flex flex-col items-center text-center gap-3 relative shadow-lg transition-all duration-300 ${currentTheme.bg} ${currentTheme.text}`}>
         
-        {/* Apply pattern as background overlay if selected */}
         {currentPattern && (
           <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ backgroundImage: currentPattern, backgroundRepeat: 'repeat', opacity: 0.4 }} />
         )}
@@ -609,7 +635,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
             {profile.bio && <p className="text-sm opacity-80 mt-1.5 leading-relaxed">{profile.bio}</p>}
           </div>
 
-          {/* Stats with links */}
+          {/* Stats */}
           <div className="flex gap-6 text-center justify-center mt-3">
             <Link href={isOwn ? '/following?tab=followers' : '#'} className="hover:opacity-80 transition-opacity">
               <p className="text-lg font-semibold">{followersCount}</p>
@@ -655,7 +681,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
             </div>
           </div>
 
-          {/* Origins Balance - только для владельца профиля */}
+          {/* Origins Balance - новая формула */}
           {isOwn && (
             <div className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 inline-block mx-auto">
               <div className="flex items-center justify-center gap-2">
@@ -665,13 +691,12 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
                 </p>
               </div>
               <p className="text-xs opacity-70 mt-1">
-                {uploadCount} photos + {swipeCount} swipes ×0.5 = {maxOriginsBalance.toFixed(1)} total
-                {spentOrigins > 0 && ` · ${spentOrigins.toFixed(1)} spent`}
+                {uploadCount} photos + {swipeCount}×0.5 + {receivedOrigins} received - {spentOrigins} spent = {maxOriginsBalance.toFixed(1)} - {spentOrigins} = {originsBalance.toFixed(1)}
               </p>
             </div>
           )}
 
-          {/* Buttons container - центрируем кнопки */}
+          {/* Buttons */}
           <div className="mt-4 flex justify-center">
             {isOwn ? (
               <Link
@@ -746,7 +771,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
         </div>
       )}
 
-      {/* Visible Achievements Section */}
+      {/* Visible Achievements */}
       {visibleAchievements.length > 0 && (
         <div className="glass rounded-2xl p-5 mb-5">
           <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -784,7 +809,7 @@ export default function ProfileView({ profile, photos, isOwn, currentUserId }: P
         </div>
       )}
 
-      {/* Hidden Achievements Section - видна только владельцу */}
+      {/* Hidden Achievements */}
       {isOwn && hiddenAchievementsList.length > 0 && (
         <div className="glass rounded-2xl p-5 mb-5 opacity-75 hover:opacity-100 transition-opacity">
           <button
