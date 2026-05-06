@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X, Star, Computer, Snowflake, BadgeCheck, Palette, Trophy, ShoppingCart, Zap, GripVertical, Eye, EyeOff, Crown, Diamond, Heart, Award, Sparkles, Flame, TrendingUp, Rocket, Leaf, Moon, Sun, Music, Book, Coffee, Gamepad, Gift, Smile } from 'lucide-react'
+import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X, Star, Computer, Snowflake, BadgeCheck, Palette, Trophy, ShoppingCart, Zap, GripVertical, Eye, EyeOff, Crown, Diamond, Heart, Award, Sparkles, Flame, TrendingUp, Rocket, Leaf, Moon, Sun, Music, Book, Coffee, Gamepad, Gift, Smile, Send } from 'lucide-react'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -56,6 +56,7 @@ export default function SettingsPage() {
   const [originsBalance, setOriginsBalance] = useState(0)
   const [maxOriginsBalance, setMaxOriginsBalance] = useState(0)
   const [spentOrigins, setSpentOrigins] = useState(0)
+  const [receivedOrigins, setReceivedOrigins] = useState(0)
   const [uploadCount, setUploadCount] = useState(0)
   const [swipeCount, setSwipeCount] = useState(0)
   
@@ -80,7 +81,7 @@ export default function SettingsPage() {
   })
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false)
 
-  // Badge config for display - РАСШИРЕННАЯ
+  // Badge config for display
   const BADGE_DISPLAY: Record<string, { name: string; icon: React.ElementType; color: string; price?: number; description?: string }> = {
     star: { name: 'Star Badge', icon: Star, color: 'text-amber-400', price: 450, description: 'A shining star badge' },
     computer: { name: 'Computer Badge', icon: Computer, color: 'text-violet-500', price: 350, description: 'Tech enthusiast badge' },
@@ -91,14 +92,13 @@ export default function SettingsPage() {
     heart: { name: 'Heart Badge', icon: Heart, color: 'text-pink-500', price: 800, description: 'Loving heart badge' },
     award: { name: 'Award Badge', icon: Award, color: 'text-emerald-500', price: 1200, description: 'Prestigious award badge' },
     sparkles: { name: 'Sparkle Badge', icon: Sparkles, color: 'text-purple-400', price: 1500, description: 'Magical sparkle badge' },
-    // НОВЫЕ БЕЙДЖИКИ
     rocket: { name: 'Rocket Badge', icon: Rocket, color: 'text-red-500', price: 1800, description: 'To the moon! 🚀' },
     leaf: { name: 'Leaf Badge', icon: Leaf, color: 'text-green-600', price: 600, description: 'Nature lover 🌿' },
     moon: { name: 'Moon Badge', icon: Moon, color: 'text-indigo-400', price: 1000, description: 'Night owl 🌙' },
     sun: { name: 'Sun Badge', icon: Sun, color: 'text-orange-500', price: 1000, description: 'Day dreamer ☀️' },
     music: { name: 'Music Badge', icon: Music, color: 'text-pink-600', price: 700, description: 'Music lover 🎵' },
     book: { name: 'Book Badge', icon: Book, color: 'text-amber-700', price: 650, description: 'Bookworm 📚' },
-    coffee: { name: 'Coffee Badge', icon: Coffee, color: 'text-brown-600', price: 550, description: 'Coffee addict ☕' },
+    coffee: { name: 'Coffee Badge', icon: Coffee, color: 'text-amber-700', price: 550, description: 'Coffee addict ☕' },
     gamepad: { name: 'Gamepad Badge', icon: Gamepad, color: 'text-purple-600', price: 750, description: 'Gamer 🎮' },
     gift: { name: 'Gift Badge', icon: Gift, color: 'text-red-500', price: 900, description: 'Gift giver 🎁' },
     smile: { name: 'Smile Badge', icon: Smile, color: 'text-yellow-500', price: 400, description: 'Always smiling 😊' },
@@ -128,7 +128,7 @@ export default function SettingsPage() {
     { id: 'stars', name: 'Stars', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpolygon%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%20points%3D%2210%200%2013%207%2020%207%2015%2011%2017%2018%2010%2014%203%2018%205%2011%200%207%207%207%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
   ]
 
-  // Shop items - РАСШИРЕННЫЕ
+  // Shop items
   const shopItems = {
     badges: [
       { id: 'star', name: 'Star Badge', icon: Star, price: 450, color: 'text-amber-400', description: 'A shining star badge' },
@@ -162,7 +162,6 @@ export default function SettingsPage() {
       { id: 'shopkeeper', name: "Shopkeepers' Favorite", icon: ShoppingCart, price: 500, description: 'Spent 500 Origins in shop' },
       { id: 'buyer', name: 'Buyer', icon: ShoppingBag, price: 200, description: 'Made first purchase' },
       { id: 'shopping', name: 'Shopping', icon: Zap, price: 400, description: 'Bought 3 items' },
-      // НОВЫЕ АЧИВКИ
       { id: 'collector', name: 'Collector', icon: Star, price: 1000, description: 'Collected 5 badges' },
       { id: 'big_spender', name: 'Big Spender', icon: Trophy, price: 2000, description: 'Spent 2000 Origins in shop' },
       { id: 'legendary', name: 'Legendary', icon: Crown, price: 5000, description: 'Bought a legendary item' },
@@ -190,6 +189,7 @@ export default function SettingsPage() {
         setSelectedPattern(data.pattern_preference || 'none')
         setShopUnlocked(data.shop_unlocked || false)
         setSpentOrigins(data.spent_origins || 0)
+        setReceivedOrigins(data.received_origins || 0)
         setHiddenBadges(data.hidden_badges || [])
         setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award', 'rocket', 'leaf', 'moon', 'sun', 'music', 'book', 'coffee', 'gamepad', 'gift', 'smile', 'sparkles'])
       }
@@ -258,7 +258,7 @@ export default function SettingsPage() {
   async function loadOriginsBalance(userId: string) {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('swipe_count, origins_balance, spent_origins')
+      .select('swipe_count, origins_balance, spent_origins, received_origins')
       .eq('id', userId)
       .single()
     
@@ -273,18 +273,25 @@ export default function SettingsPage() {
     const photoCountValue = photoCount || 0
     setUploadCount(photoCountValue)
     
-    const maxBalance = photoCountValue + (swipeCountValue * 0.5)
-    setMaxOriginsBalance(maxBalance)
-    
     const spent = profileData?.spent_origins || 0
+    const received = profileData?.received_origins || 0
+    
     setSpentOrigins(spent)
+    setReceivedOrigins(received)
+    
+    // НОВАЯ ФОРМУЛА: фото + свайпы×0.5 + полученные - потраченные
+    const maxBalance = photoCountValue + (swipeCountValue * 0.5) + received
+    setMaxOriginsBalance(maxBalance)
     
     const currentBalance = maxBalance - spent
     setOriginsBalance(currentBalance)
     
     await supabase
       .from('profiles')
-      .update({ origins_balance: currentBalance })
+      .update({ 
+        origins_balance: currentBalance,
+        max_origins_balance: maxBalance
+      })
       .eq('id', userId)
   }
 
@@ -1153,11 +1160,12 @@ export default function SettingsPage() {
               <div className="bg-muted/30 rounded-xl p-4 mb-6">
                 <p className="text-sm text-foreground mb-2">📸 How Origins work:</p>
                 <p className="text-xs text-muted-foreground">
-                  Formula: Photos + Swipes×0.5 - Spent
+                  Formula: Photos + Swipes×0.5 + Received - Spent
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
                   • {uploadCount} photos × 1 = {uploadCount}<br />
                   • {swipeCount} swipes × 0.5 = {(swipeCount * 0.5).toFixed(1)}<br />
+                  • Received: {receivedOrigins.toFixed(1)}<br />
                   • Spent: {spentOrigins.toFixed(1)}
                 </p>
                 <p className="text-xs text-amber-500 mt-2">
