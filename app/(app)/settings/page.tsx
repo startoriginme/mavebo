@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X, Star, Computer, Snowflake, BadgeCheck, Palette, Trophy, ShoppingCart, Zap, GripVertical, Eye, EyeOff, Crown, Diamond, Heart, Award, Sparkles, Flame, TrendingUp, Send } from 'lucide-react'
+import { Camera, LogOut, Save, BookOpen, Users, ShoppingBag, Coins, Key, X, Star, Computer, Snowflake, BadgeCheck, Palette, Trophy, ShoppingCart, Zap, GripVertical, Eye, EyeOff, Crown, Diamond, Heart, Award, Sparkles, Flame, TrendingUp, Rocket, Leaf, Moon, Sun, Music, Book, Coffee, Gamepad, Gift, Smile } from 'lucide-react'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -56,17 +56,8 @@ export default function SettingsPage() {
   const [originsBalance, setOriginsBalance] = useState(0)
   const [maxOriginsBalance, setMaxOriginsBalance] = useState(0)
   const [spentOrigins, setSpentOrigins] = useState(0)
-  const [sentOrigins, setSentOrigins] = useState(0)
-  const [receivedOrigins, setReceivedOrigins] = useState(0)
   const [uploadCount, setUploadCount] = useState(0)
   const [swipeCount, setSwipeCount] = useState(0)
-  
-  // Send Origins state
-  const [sendUsername, setSendUsername] = useState('')
-  const [sendAmount, setSendAmount] = useState('')
-  const [sending, setSending] = useState(false)
-  const [sendError, setSendError] = useState('')
-  const [sendSuccess, setSendSuccess] = useState('')
   
   // Purchased items
   const [purchasedBadges, setPurchasedBadges] = useState<string[]>([])
@@ -75,7 +66,7 @@ export default function SettingsPage() {
   
   // Badges management
   const [hiddenBadges, setHiddenBadges] = useState<string[]>([])
-  const [badgesOrder, setBadgesOrder] = useState<string[]>(['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award'])
+  const [badgesOrder, setBadgesOrder] = useState<string[]>(['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award', 'rocket', 'leaf', 'moon', 'sun', 'music', 'book', 'coffee', 'gamepad', 'gift', 'smile', 'sparkles'])
   const [draggedBadge, setDraggedBadge] = useState<string | null>(null)
 
   // Decoration state
@@ -89,7 +80,7 @@ export default function SettingsPage() {
   })
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false)
 
-  // Badge config for display
+  // Badge config for display - РАСШИРЕННАЯ
   const BADGE_DISPLAY: Record<string, { name: string; icon: React.ElementType; color: string; price?: number; description?: string }> = {
     star: { name: 'Star Badge', icon: Star, color: 'text-amber-400', price: 450, description: 'A shining star badge' },
     computer: { name: 'Computer Badge', icon: Computer, color: 'text-violet-500', price: 350, description: 'Tech enthusiast badge' },
@@ -100,6 +91,17 @@ export default function SettingsPage() {
     heart: { name: 'Heart Badge', icon: Heart, color: 'text-pink-500', price: 800, description: 'Loving heart badge' },
     award: { name: 'Award Badge', icon: Award, color: 'text-emerald-500', price: 1200, description: 'Prestigious award badge' },
     sparkles: { name: 'Sparkle Badge', icon: Sparkles, color: 'text-purple-400', price: 1500, description: 'Magical sparkle badge' },
+    // НОВЫЕ БЕЙДЖИКИ
+    rocket: { name: 'Rocket Badge', icon: Rocket, color: 'text-red-500', price: 1800, description: 'To the moon! 🚀' },
+    leaf: { name: 'Leaf Badge', icon: Leaf, color: 'text-green-600', price: 600, description: 'Nature lover 🌿' },
+    moon: { name: 'Moon Badge', icon: Moon, color: 'text-indigo-400', price: 1000, description: 'Night owl 🌙' },
+    sun: { name: 'Sun Badge', icon: Sun, color: 'text-orange-500', price: 1000, description: 'Day dreamer ☀️' },
+    music: { name: 'Music Badge', icon: Music, color: 'text-pink-600', price: 700, description: 'Music lover 🎵' },
+    book: { name: 'Book Badge', icon: Book, color: 'text-amber-700', price: 650, description: 'Bookworm 📚' },
+    coffee: { name: 'Coffee Badge', icon: Coffee, color: 'text-brown-600', price: 550, description: 'Coffee addict ☕' },
+    gamepad: { name: 'Gamepad Badge', icon: Gamepad, color: 'text-purple-600', price: 750, description: 'Gamer 🎮' },
+    gift: { name: 'Gift Badge', icon: Gift, color: 'text-red-500', price: 900, description: 'Gift giver 🎁' },
+    smile: { name: 'Smile Badge', icon: Smile, color: 'text-yellow-500', price: 400, description: 'Always smiling 😊' },
   }
 
   // Theme options
@@ -126,15 +128,25 @@ export default function SettingsPage() {
     { id: 'stars', name: 'Stars', preview: 'bg-[url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpolygon%20fill%3D%22%23999%22%20fill-opacity%3D%220.2%22%20points%3D%2210%200%2013%207%2020%207%2015%2011%2017%2018%2010%2014%203%2018%205%2011%200%207%207%207%22%2F%3E%3C%2Fsvg%3E")] bg-[length:20px_20px]' },
   ]
 
-  // Shop items
+  // Shop items - РАСШИРЕННЫЕ
   const shopItems = {
     badges: [
       { id: 'star', name: 'Star Badge', icon: Star, price: 450, color: 'text-amber-400', description: 'A shining star badge' },
       { id: 'computer', name: 'Computer Badge', icon: Computer, price: 350, color: 'text-violet-500', description: 'Tech enthusiast badge' },
       { id: 'heart', name: 'Heart Badge', icon: Heart, price: 800, color: 'text-pink-500', description: 'Loving heart badge' },
+      { id: 'smile', name: 'Smile Badge', icon: Smile, price: 400, color: 'text-yellow-500', description: 'Always smiling 😊' },
+      { id: 'leaf', name: 'Leaf Badge', icon: Leaf, price: 600, color: 'text-green-600', description: 'Nature lover 🌿' },
+      { id: 'coffee', name: 'Coffee Badge', icon: Coffee, price: 550, color: 'text-amber-700', description: 'Coffee addict ☕' },
+      { id: 'music', name: 'Music Badge', icon: Music, price: 700, color: 'text-pink-600', description: 'Music lover 🎵' },
+      { id: 'book', name: 'Book Badge', icon: Book, price: 650, color: 'text-amber-700', description: 'Bookworm 📚' },
+      { id: 'gamepad', name: 'Gamepad Badge', icon: Gamepad, price: 750, color: 'text-purple-600', description: 'Gamer 🎮' },
+      { id: 'moon', name: 'Moon Badge', icon: Moon, price: 1000, color: 'text-indigo-400', description: 'Night owl 🌙' },
+      { id: 'sun', name: 'Sun Badge', icon: Sun, price: 1000, color: 'text-orange-500', description: 'Day dreamer ☀️' },
+      { id: 'gift', name: 'Gift Badge', icon: Gift, price: 900, color: 'text-red-500', description: 'Gift giver 🎁' },
+      { id: 'rocket', name: 'Rocket Badge', icon: Rocket, price: 1800, color: 'text-red-500', description: 'To the moon! 🚀' },
       { id: 'crown', name: 'Crown Badge', icon: Crown, price: 3000, color: 'text-yellow-500', description: 'Royal crown badge' },
-      { id: 'diamond', name: 'Diamond Badge', icon: Diamond, price: 5000, color: 'text-sky-400', description: 'Rare diamond badge' },
       { id: 'award', name: 'Award Badge', icon: Award, price: 1200, color: 'text-emerald-500', description: 'Prestigious award badge' },
+      { id: 'diamond', name: 'Diamond Badge', icon: Diamond, price: 5000, color: 'text-sky-400', description: 'Rare diamond badge' },
       { id: 'sparkles', name: 'Sparkle Badge', icon: Sparkles, price: 1500, color: 'text-purple-400', description: 'Magical sparkle badge' },
       { id: 'snowflake', name: 'Snowflake Badge', icon: Snowflake, price: 2000, color: 'text-cyan-400', description: 'Rare snowflake badge' },
       { id: 'verified', name: 'Verified Badge', icon: BadgeCheck, price: 9999, color: 'text-blue-500', description: 'Coming Soon!', disabled: true },
@@ -150,6 +162,12 @@ export default function SettingsPage() {
       { id: 'shopkeeper', name: "Shopkeepers' Favorite", icon: ShoppingCart, price: 500, description: 'Spent 500 Origins in shop' },
       { id: 'buyer', name: 'Buyer', icon: ShoppingBag, price: 200, description: 'Made first purchase' },
       { id: 'shopping', name: 'Shopping', icon: Zap, price: 400, description: 'Bought 3 items' },
+      // НОВЫЕ АЧИВКИ
+      { id: 'collector', name: 'Collector', icon: Star, price: 1000, description: 'Collected 5 badges' },
+      { id: 'big_spender', name: 'Big Spender', icon: Trophy, price: 2000, description: 'Spent 2000 Origins in shop' },
+      { id: 'legendary', name: 'Legendary', icon: Crown, price: 5000, description: 'Bought a legendary item' },
+      { id: 'completionist', name: 'Completionist', icon: Award, price: 10000, description: 'Collected all badges' },
+      { id: 'daily_shopper', name: 'Daily Shopper', icon: ShoppingBag, price: 300, description: 'Bought something 3 days in a row' },
     ],
   }
 
@@ -172,10 +190,8 @@ export default function SettingsPage() {
         setSelectedPattern(data.pattern_preference || 'none')
         setShopUnlocked(data.shop_unlocked || false)
         setSpentOrigins(data.spent_origins || 0)
-        setSentOrigins(data.sent_origins || 0)
-        setReceivedOrigins(data.received_origins || 0)
         setHiddenBadges(data.hidden_badges || [])
-        setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award'])
+        setBadgesOrder(data.badges_order || ['star', 'computer', 'snowflake', 'verified', 'crown', 'diamond', 'heart', 'award', 'rocket', 'leaf', 'moon', 'sun', 'music', 'book', 'coffee', 'gamepad', 'gift', 'smile', 'sparkles'])
       }
       
       await loadOriginsBalance(user.id)
@@ -242,7 +258,7 @@ export default function SettingsPage() {
   async function loadOriginsBalance(userId: string) {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('swipe_count, origins_balance, spent_origins, sent_origins, received_origins')
+      .select('swipe_count, origins_balance, spent_origins')
       .eq('id', userId)
       .single()
     
@@ -257,113 +273,21 @@ export default function SettingsPage() {
     const photoCountValue = photoCount || 0
     setUploadCount(photoCountValue)
     
-    const sent = profileData?.sent_origins || 0
-    const received = profileData?.received_origins || 0
-    setSentOrigins(sent)
-    setReceivedOrigins(received)
-    
-    // Новая формула: фото × 1 + свайпы × 0.5 + полученные - отправленные - потраченные
-    const maxBalance = photoCountValue + (swipeCountValue * 0.5) + received
+    const maxBalance = photoCountValue + (swipeCountValue * 0.5)
     setMaxOriginsBalance(maxBalance)
     
-    const currentBalance = maxBalance - sent - (profileData?.spent_origins || 0)
+    const spent = profileData?.spent_origins || 0
+    setSpentOrigins(spent)
+    
+    const currentBalance = maxBalance - spent
     setOriginsBalance(currentBalance)
     
-    // Обновляем баланс в БД если расходится
-    if (profileData?.origins_balance !== currentBalance) {
-      await supabase
-        .from('profiles')
-        .update({ origins_balance: currentBalance })
-        .eq('id', userId)
-    }
+    await supabase
+      .from('profiles')
+      .update({ origins_balance: currentBalance })
+      .eq('id', userId)
   }
 
- async function sendOrigins() {
-  if (!userId) return
-  if (!sendUsername.trim()) {
-    setSendError('Enter username')
-    return
-  }
-  const amount = parseFloat(sendAmount)
-  if (isNaN(amount) || amount <= 0) {
-    setSendError('Enter valid amount')
-    return
-  }
-  if (amount > originsBalance) {
-    setSendError(`Not enough Origins! You have ${originsBalance.toFixed(1)}`)
-    return
-  }
-  
-  setSending(true)
-  setSendError('')
-  setSendSuccess('')
-  
-  try {
-    // Находим получателя
-    const { data: receiver, error: findError } = await supabase
-      .from('profiles')
-      .select('id, username, received_origins, origins_balance')
-      .eq('username', sendUsername.toLowerCase())
-      .maybeSingle()
-    
-    if (findError || !receiver) {
-      setSendError('User not found')
-      setSending(false)
-      return
-    }
-    
-    if (receiver.id === userId) {
-      setSendError('You cannot send Origins to yourself')
-      setSending(false)
-      return
-    }
-    
-    // 1. Обновляем отправителя
-    const newSent = sentOrigins + amount
-    const newSenderBalance = originsBalance - amount
-    
-    const { error: senderError } = await supabase
-      .from('profiles')
-      .update({
-        sent_origins: newSent,
-        origins_balance: newSenderBalance
-      })
-      .eq('id', userId)
-    
-    if (senderError) throw senderError
-    
-    // 2. Обновляем получателя (увеличиваем received_origins И origins_balance)
-    const newReceived = (receiver.received_origins || 0) + amount
-    const newReceiverBalance = (receiver.origins_balance || 0) + amount
-    
-    const { error: receiverError } = await supabase
-      .from('profiles')
-      .update({
-        received_origins: newReceived,
-        origins_balance: newReceiverBalance
-      })
-      .eq('id', receiver.id)
-    
-    if (receiverError) throw receiverError
-    
-    // 3. Обновляем локальные состояния
-    setSentOrigins(newSent)
-    setOriginsBalance(newSenderBalance)
-    
-    // 4. Обновляем maxOriginsBalance (он не меняется при отправке)
-    // maxOriginsBalance остается тот же
-    
-    setSendSuccess(`Sent ${amount} Origins to @${receiver.username}!`)
-    setSendUsername('')
-    setSendAmount('')
-    
-  } catch (error) {
-    console.error('Error sending Origins:', error)
-    setSendError('Failed to send Origins')
-  } finally {
-    setSending(false)
-  }
-}
   async function saveBadgesSettings() {
     await supabase
       .from('profiles')
@@ -552,6 +476,11 @@ export default function SettingsPage() {
       if (itemId === 'shopkeeper') achievementName = "Shopkeepers' Favorite"
       if (itemId === 'buyer') achievementName = 'Buyer'
       if (itemId === 'shopping') achievementName = 'Shopping'
+      if (itemId === 'collector') achievementName = 'Collector'
+      if (itemId === 'big_spender') achievementName = 'Big Spender'
+      if (itemId === 'legendary') achievementName = 'Legendary'
+      if (itemId === 'completionist') achievementName = 'Completionist'
+      if (itemId === 'daily_shopper') achievementName = 'Daily Shopper'
       
       await supabase
         .from('achievements')
@@ -1224,49 +1153,16 @@ export default function SettingsPage() {
               <div className="bg-muted/30 rounded-xl p-4 mb-6">
                 <p className="text-sm text-foreground mb-2">📸 How Origins work:</p>
                 <p className="text-xs text-muted-foreground">
-                  Formula: Photos + Swipes×0.5 + Received - Sent - Spent
+                  Formula: Photos + Swipes×0.5 - Spent
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
                   • {uploadCount} photos × 1 = {uploadCount}<br />
                   • {swipeCount} swipes × 0.5 = {(swipeCount * 0.5).toFixed(1)}<br />
-                  • Received: {receivedOrigins.toFixed(1)}<br />
-                  • Sent: {sentOrigins.toFixed(1)}<br />
                   • Spent: {spentOrigins.toFixed(1)}
                 </p>
                 <p className="text-xs text-amber-500 mt-2">
-                  Balance: {maxOriginsBalance.toFixed(1)} - {sentOrigins.toFixed(1)} - {spentOrigins.toFixed(1)} = {originsBalance.toFixed(1)}
+                  Balance: {maxOriginsBalance.toFixed(1)} - {spentOrigins.toFixed(1)} = {originsBalance.toFixed(1)}
                 </p>
-              </div>
-
-              {/* Send Origins Form */}
-              <div className="border-t border-border pt-4 mb-4">
-                <p className="text-sm font-medium text-foreground mb-3">Send Origins to a friend</p>
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    value={sendUsername}
-                    onChange={(e) => setSendUsername(e.target.value)}
-                    placeholder="Username (without @)"
-                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <input
-                    type="number"
-                    value={sendAmount}
-                    onChange={(e) => setSendAmount(e.target.value)}
-                    placeholder="Amount"
-                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  {sendError && <p className="text-sm text-destructive">{sendError}</p>}
-                  {sendSuccess && <p className="text-sm text-green-500">{sendSuccess}</p>}
-                  <button
-                    onClick={sendOrigins}
-                    disabled={sending}
-                    className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Send className="w-4 h-4" />
-                    {sending ? 'Sending...' : 'Send Origins'}
-                  </button>
-                </div>
               </div>
               
               <button
