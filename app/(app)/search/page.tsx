@@ -40,16 +40,7 @@ const OFFICIAL_USERS: OfficialUser[] = [
     description: 'Founder of StartOrigin',
     category: 'official'
   },
-  { 
-    username: 'winterwastaken', 
-    name: 'winterwastaken', 
-    icon: Snowflake, 
-    color: 'text-cyan-400', 
-    badge: 'snowflake',
-    role: 'Creative Director',
-    description: 'Creative vision and design',
-    category: 'official'
-  },
+  
   // StartOrigin's Friends category
   { 
     username: 'viscaelbarca', 
@@ -69,6 +60,16 @@ const OFFICIAL_USERS: OfficialUser[] = [
     badge: 'computer',
     role: 'Friend',
     description: 'StartOrigin Community Member',
+    category: 'friends'
+  },
+    { 
+    username: 'pipinos', 
+    name: 'Pipinos', 
+    icon: Star, 
+    color: 'text-amber-400', 
+    badge: 'star',
+    role: 'Friend',
+    description: 'A tester',
     category: 'friends'
   },
   { 
