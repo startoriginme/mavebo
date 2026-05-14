@@ -1,10 +1,16 @@
+// app/auth/login/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@supabase/supabase-js'
 import { Eye, EyeOff, Camera } from 'lucide-react'
+
+// Инициализируем клиент один раз вне компонента
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export default function LoginPage() {
   const router = useRouter()
@@ -14,10 +20,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Проверка авторизации
   useEffect(() => {
     async function checkAuth() {
-      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         router.push('/feed')
@@ -30,21 +34,30 @@ export default function LoginPage() {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError(error.message)
+    
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ 
+        email: email.trim(), 
+        password 
+      })
+      
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+      } else {
+        router.push('/feed')
+        router.refresh()
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('An unexpected error occurred')
       setLoading(false)
-    } else {
-      router.push('/feed')
-      router.refresh()
     }
   }
 
   return (
     <main className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <Link href="/" className="flex flex-col items-center">
             <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mb-4 shadow-lg shadow-primary/25">
@@ -59,7 +72,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Card */}
         <div className="glass rounded-2xl p-6">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {error && (
@@ -103,13 +115,8 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
